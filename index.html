@@ -4197,11 +4197,12 @@ function resolveIcsText(raw) {
 }
 
 async function fetchIcalAssignments(feedUrl) {
-  if (!feedUrl) throw new Error("No feed URL configured");
+  const normalizedFeedUrl = (feedUrl || "").trim();
+  if (!normalizedFeedUrl) throw new Error("No feed URL configured");
 
   // Validate URL — must be https:// not a data: URI or file path
   let parsed;
-  try { parsed = new URL(feedUrl); } catch(e) {
+  try { parsed = new URL(normalizedFeedUrl); } catch(e) {
     throw new Error("Invalid URL — paste it directly from Canvas > Calendar > Calendar Feed");
   }
   if (parsed.protocol === "data:") {
@@ -4219,7 +4220,7 @@ async function fetchIcalAssignments(feedUrl) {
   for (const proxy of ICAL_PROXIES) {
     let ics;
     try {
-      ics = await proxy(feedUrl);
+      ics = await proxy(normalizedFeedUrl);
     } catch(e) {
       const msg = e.name === "AbortError"
         ? proxy.name + ": timed out after 8s"
@@ -5214,12 +5215,12 @@ function HomeworkView({ state, dispatch, showToast }) {
   };
 
   useEffect(() => {
-    if (!feedUrl) return;
+    if (!feedUrl || syncing) return;
     const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
     if (!lastSync || new Date(lastSync).getTime() < dayAgo) {
       doSync();
     }
-  }, []);
+  }, [feedUrl, lastSync]);
 
   const toggleComplete = (id) => {
     dispatch({ type:"UPD_HOMEWORK", homework:{
