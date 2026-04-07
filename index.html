@@ -38,10 +38,11 @@ body { font-family:var(--font); font-size:26px; color:var(--text); -webkit-font-
 .shell { display:grid; grid-template-rows:auto 1fr auto; height:100%; width:100%; position:relative; overflow:hidden; }
 .topbar { background:var(--bg1); padding:8px 22px; padding-top:max(8px,env(safe-area-inset-top)); display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .logo { font-size:38px; font-weight:900; color:var(--coral); letter-spacing:-0.5px; font-family:var(--heading); line-height:1; }
-.scroll { overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; padding:28px 22px 90px; }
+.scroll { overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; padding:28px 22px calc(80px + env(safe-area-inset-bottom)); }
 .bottom-nav { display:none !important; }
 .nav-trigger { display:none !important; }
 .nav-radial-item { display:none !important; }
+.iframe-tabnav { display:flex !important; }
 .nav-overlay { display:none !important; }
 .nav-tooltip { display:none !important; }
 .bottom-nav > * { pointer-events:all; }
@@ -154,7 +155,7 @@ textarea.field.tw-placeholder::placeholder { color:transparent; }
 .empty-msg { font-size:var(--t-lg); font-weight:700; font-family:var(--heading); }
 .empty-sub { font-size:var(--t-md); margin-top:8px; }
 .empty-tagline { font-size:var(--t-sm); font-style:italic; color:var(--text3); margin-top:14px; font-family:var(--heading); }
-.toast { position:fixed; bottom:calc(72px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); background:var(--bg2); border:1px solid var(--border); border-radius:99px; padding:12px 26px; font-size:var(--t-sm); font-weight:700; z-index:400; animation:toastIn 0.3s cubic-bezier(0.34,1.56,0.64,1); white-space:nowrap; box-shadow:var(--shadow); }
+.toast { position:fixed; bottom:calc(80px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); background:var(--bg2); border:1px solid var(--border); border-radius:16px; padding:12px 16px; font-size:var(--t-sm); font-weight:700; z-index:400; animation:toastIn 0.3s cubic-bezier(0.34,1.56,0.64,1); white-space:normal; box-shadow:var(--shadow); max-width:calc(100vw - 40px); width:max-content; }
 @keyframes toastIn { from{transform:translateX(-50%) translateY(20px);opacity:0} to{transform:translateX(-50%) translateY(0);opacity:1} }
 .time-ribbon { display:flex; align-items:center; gap:8px; }
 .time-track { flex:1; height:4px; background:var(--bg3); border-radius:99px; position:relative; overflow:visible; }
@@ -186,7 +187,7 @@ textarea.field.tw-placeholder::placeholder { color:transparent; }
 @keyframes fabPop { 0%{transform:scale(0.5);opacity:0} 70%{transform:scale(1.12)} 100%{transform:scale(1);opacity:1} }
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 @keyframes fabShake { 0%,100%{transform:rotate(0deg)} 20%{transform:rotate(-12deg)} 40%{transform:rotate(12deg)} 60%{transform:rotate(-8deg)} 80%{transform:rotate(6deg)} }
-.quick-add-fab { position:fixed; bottom:calc(76px + env(safe-area-inset-bottom)); right:18px; z-index:30; width:62px; height:62px; border-radius:50%; background:var(--coral); border:none; display:flex; align-items:center; justify-content:center; font-size:32px; color:#fff; cursor:pointer; box-shadow:0 4px 24px rgba(255,95,87,0.5); transition:all 0.18s; -webkit-tap-highlight-color:transparent; font-weight:300; line-height:1; }
+.quick-add-fab { position:fixed; bottom:calc(82px + env(safe-area-inset-bottom)); right:18px; z-index:30; width:62px; height:62px; border-radius:50%; background:var(--coral); border:none; display:flex; align-items:center; justify-content:center; font-size:32px; color:#fff; cursor:pointer; box-shadow:0 4px 24px rgba(255,95,87,0.5); transition:all 0.18s; -webkit-tap-highlight-color:transparent; font-weight:300; line-height:1; }
 .quick-add-fab:active { transform:scale(0.9); }
 .quick-add-fab.shake-anim { animation:fabShake 0.45s ease; }
 
@@ -236,13 +237,14 @@ html.iframe-mode .quick-add-fab { display:none !important; }
   background:var(--bg1); border-top:1px solid var(--border);
   padding:0 0 env(safe-area-inset-bottom,0px); }
 .iframe-tabnav-btn {
-  flex:1; padding:10px 4px 8px; border:none; background:transparent; cursor:pointer;
-  display:flex; flex-direction:column; align-items:center; gap:3px;
-  color:var(--text3); font-family:var(--mono); font-size:18px;
-  -webkit-tap-highlight-color:transparent; transition:color 0.15s;
+  flex:1; padding:12px 4px 10px; min-height:56px; border:none; background:transparent; cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+  color:var(--text3); font-family:var(--mono); font-size:22px;
+  -webkit-tap-highlight-color:transparent; transition:color 0.15s, transform 0.1s;
 }
+.iframe-tabnav-btn:active { transform:scale(0.9); }
 .iframe-tabnav-btn.active { color:var(--coral); }
-.iframe-tabnav-btn span { font-family:var(--font); font-size:10px; font-weight:800; letter-spacing:0.3px; text-transform:uppercase; }
+.iframe-tabnav-btn span { font-family:var(--font); font-size:13px; font-weight:800; letter-spacing:0.3px; text-transform:uppercase; }
 ::-webkit-scrollbar-track { background:transparent; }
 ::-webkit-scrollbar-thumb { background:var(--border); border-radius:99px; }
 
@@ -1038,29 +1040,6 @@ function getLast84Days() {
 }
 function merge(base, overrides) { return Object.assign({}, base, overrides); }
 
-function normalizeStateData(raw = {}) {
-  return {
-    ...DEFAULT_STATE,
-    ...raw,
-    tasks: Array.isArray(raw.tasks) ? raw.tasks : DEFAULT_STATE.tasks,
-    instances: raw.instances && typeof raw.instances === "object" ? raw.instances : DEFAULT_STATE.instances,
-    streak: { ...DEFAULT_STATE.streak, ...(raw.streak || {}) },
-    cfg: { ...DEFAULT_STATE.cfg, ...(raw.cfg || {}) },
-    journals: raw.journals && typeof raw.journals === "object" ? raw.journals : DEFAULT_STATE.journals,
-    tomorrowTasks: Array.isArray(raw.tomorrowTasks) ? raw.tomorrowTasks : DEFAULT_STATE.tomorrowTasks,
-    calendarItems: raw.calendarItems && typeof raw.calendarItems === "object" ? raw.calendarItems : DEFAULT_STATE.calendarItems,
-    weeklyTasks: Array.isArray(raw.weeklyTasks) ? raw.weeklyTasks : DEFAULT_STATE.weeklyTasks,
-    taskOrder: Array.isArray(raw.taskOrder) ? raw.taskOrder : DEFAULT_STATE.taskOrder,
-    skippedDays: raw.skippedDays && typeof raw.skippedDays === "object" ? raw.skippedDays : DEFAULT_STATE.skippedDays,
-    userName: typeof raw.userName === "string" ? raw.userName : DEFAULT_STATE.userName,
-    userIdentity: typeof raw.userIdentity === "string" ? raw.userIdentity : DEFAULT_STATE.userIdentity,
-    homework: {
-      assignments: Array.isArray(raw.homework?.assignments) ? raw.homework.assignments : [],
-      uploads: Array.isArray(raw.homework?.uploads) ? raw.homework.uploads : [],
-    },
-  };
-}
-
 function calcTaskStreak(taskId, instances) {
   let streak = 0;
   const d = new Date();
@@ -1081,7 +1060,12 @@ async function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_STATE;
-    return normalizeStateData(JSON.parse(raw));
+    const p = JSON.parse(raw);
+    return { ...DEFAULT_STATE, ...p,
+      streak: { ...DEFAULT_STATE.streak, ...(p.streak || {}) },
+      cfg:    { ...DEFAULT_STATE.cfg,    ...(p.cfg    || {}) },
+      homework: { assignments: [], uploads: [], ...(p.homework || {}) },
+    };
   } catch(e) { return DEFAULT_STATE; }
 }
 async function saveState(s) {
@@ -1192,7 +1176,7 @@ function appReducer(state, action) {
       return merge(state, { calendarItems: merge(state.calendarItems, { [action.date]: existing.filter(i => i.id !== action.id) }) });
     }
 
-    case "IMPORT": return normalizeStateData(action.data);
+    case "IMPORT": return merge(merge({}, DEFAULT_STATE), action.data);
 
     case "ADD_WEEKLY_TASK":
       return merge(state, { weeklyTasks: [...(state.weeklyTasks || []), action.task] });
@@ -1230,7 +1214,7 @@ function appReducer(state, action) {
       const today = todayStr();
       return merge(state, {
         instances: merge(state.instances, { [today]: [] }),
-        cfg: merge(state.cfg, { lastDailySpin: null, lastSpinDate: null }),
+        cfg: merge(state.cfg, { lastDailySpin: null }),
       });
     }
 
@@ -1268,32 +1252,9 @@ function buildExportData(state) {
   const all       = Object.values(state.instances).flat();
   const finalized = all.filter(i => i.status !== "pending");
   const completed = finalized.filter(i => i.status === "completed");
-  const taskPointsById = Object.fromEntries([
-    ...(state.tasks || []).map(t => [t.id, t.points || 0]),
-    ...((state.tomorrowTasks || []).map(t => [t.id, t.points || 0])),
-    [JOURNAL_TASK_ID, JOURNAL_TASK.points || 0],
-  ]);
-  const instancePoints = completed.reduce((sum, inst) => sum + (taskPointsById[inst.taskId] || 0), 0);
-  const weeklyPoints = (state.weeklyTasks || []).reduce(
-    (sum, task) => sum + (task.completions || []).reduce((inner, c) => inner + (c.pointsEarned || 0), 0),
-    0
-  );
-  const totalPoints = instancePoints + weeklyPoints;
   return {
     _meta: { app:"Sched", exportVersion:EXPORT_VERSION, exportedAt:new Date().toISOString(), exportedAtReadable:new Date().toLocaleString() },
-    tasks: state.tasks,
-    instances: state.instances,
-    cfg: state.cfg,
-    streak: state.streak,
-    journals: state.journals,
-    tomorrowTasks: state.tomorrowTasks,
-    calendarItems: state.calendarItems,
-    weeklyTasks: state.weeklyTasks,
-    taskOrder: state.taskOrder,
-    skippedDays: state.skippedDays,
-    userName: state.userName,
-    userIdentity: state.userIdentity,
-    homework: state.homework,
+    tasks: state.tasks, instances: state.instances, cfg: state.cfg, streak: state.streak,
 
     _summary: {
       totalTasks: state.tasks.length, activeTasks: state.tasks.filter(t=>t.active).length,
@@ -1301,27 +1262,18 @@ function buildExportData(state) {
       totalCompleted: completed.length, totalFinalized: finalized.length,
       completionRate: finalized.length > 0 ? Math.round(completed.length/finalized.length*100) : 0,
       currentStreak: state.streak.cur, bestStreak: state.streak.best,
-      totalPoints,
+
+
     }
   };
 }
 
 function mergeImport(imported, current) {
-  return normalizeStateData({
-    ...current,
+  return merge(merge({}, current), {
     tasks:       imported.tasks       ?? current.tasks,
     instances:   imported.instances   ?? current.instances,
     cfg:         merge(current.cfg, imported.cfg ?? {}),
     streak:      imported.streak      ?? current.streak,
-    journals:    imported.journals    ?? current.journals,
-    tomorrowTasks: imported.tomorrowTasks ?? current.tomorrowTasks,
-    calendarItems: imported.calendarItems ?? current.calendarItems,
-    weeklyTasks: imported.weeklyTasks ?? current.weeklyTasks,
-    taskOrder: imported.taskOrder ?? current.taskOrder,
-    skippedDays: imported.skippedDays ?? current.skippedDays,
-    userName: imported.userName ?? current.userName,
-    userIdentity: imported.userIdentity ?? current.userIdentity,
-    homework: imported.homework ?? current.homework,
   });
 }
 
@@ -1330,8 +1282,29 @@ function mergeImport(imported, current) {
 function SymbolPicker({ value, onChange }) { return null; }
 
 function Toast({ msg, onDone }) {
-  useEffect(() => { const t = setTimeout(onDone, 2500); return () => clearTimeout(t); }, []);
-  return <div className="toast">{msg}</div>;
+  const [clicked, setClicked] = React.useState(false);
+  const timerRef = React.useRef(null);
+  useEffect(() => {
+    timerRef.current = setTimeout(onDone, 2500);
+    return () => clearTimeout(timerRef.current);
+  }, []);
+  const handleClick = () => {
+    if (!clicked) {
+      clearTimeout(timerRef.current);
+      setClicked(true);
+    }
+  };
+  return (
+    <div className="toast" onClick={handleClick} style={{cursor:"pointer",display:"flex",alignItems:"flex-start",gap:10,whiteSpace:"normal",maxWidth:"calc(100vw - 40px)",textAlign:"left",borderRadius:16,padding:"12px 16px"}}>
+      <span style={{flex:1,wordBreak:"break-word"}}>{msg}</span>
+      {clicked && (
+        <button
+          onClick={e=>{e.stopPropagation();onDone();}}
+          style={{flexShrink:0,background:"#e03040",border:"none",borderRadius:"50%",width:26,height:26,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"#fff",fontSize:14,fontWeight:700,lineHeight:1,marginTop:1}}
+        >✕</button>
+      )}
+    </div>
+  );
 }
 
 function BottomSheet({ title, onClose, children }) {
@@ -1470,7 +1443,7 @@ function QuickAddSheet({ onAdd, onClose, recentTasks, todayTaskCount }) {
         {/* Recent tasks */}
         {recentTasks && recentTasks.length > 0 && (
           <div style={{ marginBottom:14 }}>
-            <div style={{ fontSize:11, fontFamily:'var(--mono)', fontWeight:800, color:'var(--text3)', letterSpacing:1, textTransform:'uppercase', marginBottom:8 }}>Recent</div>
+            <div style={{ fontSize:13, fontFamily:'var(--mono)', fontWeight:800, color:'var(--text3)', letterSpacing:1, textTransform:'uppercase', marginBottom:8 }}>Recent</div>
             <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
               {recentTasks.slice(0, 6).map((t, i) => (
                 <button key={i} className="quick-recent-chip" onClick={() => isAtLimit ? submit(t.name, true) : submit(t.name)}>
@@ -1484,7 +1457,7 @@ function QuickAddSheet({ onAdd, onClose, recentTasks, todayTaskCount }) {
         {/* Common suggestions */}
         {suggestions.length > 0 && (
           <div style={{ marginBottom:18 }}>
-            <div style={{ fontSize:11, fontFamily:'var(--mono)', fontWeight:800, color:'var(--text3)', letterSpacing:1, textTransform:'uppercase', marginBottom:8 }}>Common</div>
+            <div style={{ fontSize:13, fontFamily:'var(--mono)', fontWeight:800, color:'var(--text3)', letterSpacing:1, textTransform:'uppercase', marginBottom:8 }}>Common</div>
             <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
               {suggestions.slice(0, 8).map((t, i) => (
                 <button key={i} className="quick-recent-chip" onClick={() => isAtLimit ? submit(t, true) : submit(t)}>
@@ -1589,14 +1562,14 @@ function WeeklySummaryModal({ state, onClose }) {
           ].map(([val,lbl,col]) => (
             <div key={lbl} style={{ background:"var(--bg2)", borderRadius:12, padding:"12px 8px", textAlign:"center", border:"1px solid var(--border)" }}>
               <div style={{ fontSize:26, fontWeight:900, color:col, fontFamily:"var(--heading)" }}>{val}</div>
-              <div style={{ fontSize:11, fontWeight:700, color:"var(--text3)", fontFamily:"var(--mono)", letterSpacing:0.5, textTransform:"uppercase", marginTop:2, lineHeight:1.3 }}>{lbl}</div>
+              <div style={{ fontSize:13, fontWeight:700, color:"var(--text3)", fontFamily:"var(--mono)", letterSpacing:0.5, textTransform:"uppercase", marginTop:2, lineHeight:1.3 }}>{lbl}</div>
             </div>
           ))}
         </div>
 
         {/* Day-by-day bar chart */}
         <div style={{ marginBottom:16, padding:"14px 14px 10px", background:"var(--bg2)", borderRadius:14, border:"1px solid var(--border)" }}>
-          <div style={{ fontSize:11, fontWeight:800, color:"var(--text3)", fontFamily:"var(--mono)", letterSpacing:1.5, textTransform:"uppercase", marginBottom:10 }}>Daily breakdown</div>
+          <div style={{ fontSize:13, fontWeight:800, color:"var(--text3)", fontFamily:"var(--mono)", letterSpacing:1.5, textTransform:"uppercase", marginBottom:10 }}>Daily breakdown</div>
           <div style={{ display:"flex", gap:6, alignItems:"flex-end", height:52 }}>
             {dayStats.map(d => {
               const barH = d.total > 0 ? Math.max(6, Math.round((d.done/maxBar)*48)) : 4;
@@ -1604,10 +1577,10 @@ function WeeklySummaryModal({ state, onClose }) {
               return (
                 <div key={d.ds} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
                   <div style={{ width:"100%", height:barH, background:col, borderRadius:4, transition:"height 0.6s ease", position:"relative" }}>
-                    {d.hasJournal && <div style={{ position:"absolute", top:-6, left:"50%", transform:"translateX(-50%)", fontSize:8, color:"var(--coral2)" }}>✶</div>}
+                    {d.hasJournal && <div style={{ position:"absolute", top:-6, left:"50%", transform:"translateX(-50%)", fontSize:13, color:"var(--coral2)" }}>✶</div>}
                   </div>
-                  <div style={{ fontSize:10, fontWeight:700, color: d.ds===todayStr()?"var(--coral)":"var(--text3)", fontFamily:"var(--mono)" }}>{d.label}</div>
-                  <div style={{ fontSize:10, color:"var(--text3)", fontFamily:"var(--mono)" }}>{d.total>0?`${d.done}/${d.total}`:"—"}</div>
+                  <div style={{ fontSize:13, fontWeight:700, color: d.ds===todayStr()?"var(--coral)":"var(--text3)", fontFamily:"var(--mono)" }}>{d.label}</div>
+                  <div style={{ fontSize:13, color:"var(--text3)", fontFamily:"var(--mono)" }}>{d.total>0?`${d.done}/${d.total}`:"—"}</div>
                 </div>
               );
             })}
@@ -1627,7 +1600,7 @@ function WeeklySummaryModal({ state, onClose }) {
 
         {/* Written reflection */}
         <div style={{ marginBottom:20, padding:"14px 16px", background:"rgba(255,138,130,0.06)", border:"1px solid rgba(255,138,130,0.2)", borderRadius:12 }}>
-          <div style={{ fontSize:11, fontWeight:800, color:"var(--coral2)", fontFamily:"var(--mono)", letterSpacing:1.5, textTransform:"uppercase", marginBottom:6 }}>Reflection</div>
+          <div style={{ fontSize:13, fontWeight:800, color:"var(--coral2)", fontFamily:"var(--mono)", letterSpacing:1.5, textTransform:"uppercase", marginBottom:6 }}>Reflection</div>
           <div style={{ fontSize:17, fontWeight:600, color:"var(--text)", lineHeight:1.55, fontStyle:"italic" }}>{reflection}</div>
         </div>
 
@@ -2219,7 +2192,7 @@ function InlineQuickAdd({ onAdd, recentTasks, todayNames }) {
         <div style={{ borderTop:"1px solid var(--border)", padding:"10px 12px 12px" }}>
           {recentChips.length > 0 && (
             <div style={{ marginBottom: commonChips.length > 0 ? 8 : 0 }}>
-              <div style={{ fontSize:11, fontFamily:"var(--mono)", fontWeight:800, color:"var(--text3)", letterSpacing:1, textTransform:"uppercase", marginBottom:6 }}>Recent</div>
+              <div style={{ fontSize:13, fontFamily:"var(--mono)", fontWeight:800, color:"var(--text3)", letterSpacing:1, textTransform:"uppercase", marginBottom:6 }}>Recent</div>
               <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
                 {recentChips.map((t,i) => <button key={i} className="quick-recent-chip" onClick={() => submit(t.name)}>{t.name}</button>)}
               </div>
@@ -2227,7 +2200,7 @@ function InlineQuickAdd({ onAdd, recentTasks, todayNames }) {
           )}
           {commonChips.length > 0 && (
             <div>
-              <div style={{ fontSize:11, fontFamily:"var(--mono)", fontWeight:800, color:"var(--text3)", letterSpacing:1, textTransform:"uppercase", marginBottom:6 }}>Common</div>
+              <div style={{ fontSize:13, fontFamily:"var(--mono)", fontWeight:800, color:"var(--text3)", letterSpacing:1, textTransform:"uppercase", marginBottom:6 }}>Common</div>
               <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
                 {commonChips.map((t,i) => <button key={i} className="quick-recent-chip" onClick={() => submit(t)}>{t}</button>)}
               </div>
@@ -2329,31 +2302,30 @@ function HomeView({ state, dispatch, showToast, onQuickAdd, onOpenJournal, onEdi
   }, [today]);
 
   const todayInstList = (() => {
-    const activeDate = isToday ? today : browseDate;
     const dayOfWeek  = isToday ? new Date().getDay() : new Date(browseDate + "T12:00:00").getDay();
     const dailyTasks = orderedTasks.filter(t => {
       if (!t.active) return false;
       if (!t.days.includes(dayOfWeek)) return false;
       if (t.repeat === false && t.createdAt) {
         const created = t.createdAt.slice(0, 10);
-        if (created !== activeDate) return false;
+        if (created !== today) return false;
       }
       return true;
     });
-    const extraTasks  = (state.tomorrowTasks || []).filter(t => isToday ? t.forDate <= today : t.forDate === browseDate);
-    const saved       = instances[activeDate] || [];
+    const extraTasks  = (state.tomorrowTasks || []).filter(t => t.forDate <= today);
+    const saved       = instances[today] || [];
     const completedMap = {};
     saved.forEach(i => {
       if (i.status === "completed" && i.completedAt) {
         const d = new Date(i.completedAt);
         const localDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-        if (localDate === activeDate) completedMap[i.taskId] = i;
+        if (localDate === today) completedMap[i.taskId] = i;
       }
     });
     const allInsts = [
-      ...dailyTasks.map(t => completedMap[t.id] || { id:`${activeDate}_${t.id}`, taskId:t.id, date:activeDate, status:"pending", completedAt:null }),
-      ...extraTasks.map(t => completedMap[t.id] || { id:`${activeDate}_${t.id}`, taskId:t.id, date:activeDate, status:"pending", completedAt:null }),
-    ].filter(i => !((state.skippedDays || {})[activeDate] || []).includes(i.taskId));
+      ...dailyTasks.map(t => completedMap[t.id] || { id:`${today}_${t.id}`, taskId:t.id, date:today, status:"pending", completedAt:null }),
+      ...extraTasks.map(t => completedMap[t.id] || { id:`${today}_${t.id}`, taskId:t.id, date:today, status:"pending", completedAt:null }),
+    ].filter(i => !((state.skippedDays || {})[today] || []).includes(i.taskId));
     // Deduplicate by taskId to prevent React key collisions (e.g. task in both dailyTasks + extraTasks)
     const seen = new Set();
     return allInsts.filter(i => { if (seen.has(i.taskId)) return false; seen.add(i.taskId); return true; });
@@ -2721,7 +2693,7 @@ function HomeView({ state, dispatch, showToast, onQuickAdd, onOpenJournal, onEdi
         };
         return (
           <div style={{ marginBottom:20, padding:"12px 14px", background:"var(--bg1)", borderRadius:12, border:"1px solid var(--border)" }}>
-            <div style={{ fontFamily:"var(--mono)", fontSize:11, fontWeight:700, color:"var(--text3)", letterSpacing:1.5, textTransform:"uppercase", marginBottom:8 }}>4-week history</div>
+            <div style={{ fontFamily:"var(--mono)", fontSize:13, fontWeight:700, color:"var(--text3)", letterSpacing:1.5, textTransform:"uppercase", marginBottom:8 }}>4-week history</div>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(28, 1fr)", gap:2 }}>
               {days28.map(ds => (
                 <div key={ds} title={ds} style={{ aspectRatio:1, borderRadius:2, background:getColor(ds), outline:ds===today?"1.5px solid var(--coral)":"none", outlineOffset:1 }} />
@@ -2754,16 +2726,16 @@ function HomeView({ state, dispatch, showToast, onQuickAdd, onOpenJournal, onEdi
               {streak.cur >= 30 ? "🔥" : streak.cur >= 14 ? "🔥" : streak.cur >= 7 ? "🔥" : "○"}
             </div>
             <div style={{ fontFamily:"var(--heading)", fontSize:52, fontWeight:900, color: streak.cur >= 30 ? "#ffd700" : streak.cur >= 14 ? "var(--coral2)" : "var(--coral)", lineHeight:1 }}>{streak.cur}</div>
-            <div style={{ fontFamily:"var(--mono)", fontSize:11, fontWeight:700, color:"var(--text3)", letterSpacing:1.5, textTransform:"uppercase" }}>
+            <div style={{ fontFamily:"var(--mono)", fontSize:13, fontWeight:700, color:"var(--text3)", letterSpacing:1.5, textTransform:"uppercase" }}>
               {streak.cur >= 30 ? "🏆 Elite" : streak.cur >= 14 ? "On Fire" : streak.cur >= 7 ? "Building" : "Streak"}
             </div>
             {streak.cur >= 7 && (
-              <div style={{ fontFamily:"var(--mono)", fontSize:11, fontWeight:800, color: streak.cur >= 30 ? "#ffd700" : "var(--coral)", marginTop:2 }}>
+              <div style={{ fontFamily:"var(--mono)", fontSize:13, fontWeight:800, color: streak.cur >= 30 ? "#ffd700" : "var(--coral)", marginTop:2 }}>
                 {streak.cur >= 30 ? "30+ days" : streak.cur >= 14 ? "14+ days" : "7+ days"} 🎯
               </div>
             )}
             {streak.freezes > 0 && (
-              <div style={{ fontFamily:"var(--mono)", fontSize:11, fontWeight:700, color:"var(--blue)", marginTop:2 }}>
+              <div style={{ fontFamily:"var(--mono)", fontSize:13, fontWeight:700, color:"var(--blue)", marginTop:2 }}>
                 ❄️ {streak.freezes} freeze{streak.freezes!==1?"s":""}
               </div>
             )}
@@ -2820,8 +2792,8 @@ function HomeView({ state, dispatch, showToast, onQuickAdd, onOpenJournal, onEdi
                 return (
                   <>
                     <div style={{ fontFamily:"var(--heading)", fontSize:46, fontWeight:900, color:"var(--text3)", lineHeight:1 }}>—</div>
-                    <div style={{ fontFamily:"var(--mono)", fontSize:10, fontWeight:700, color:"var(--text3)", letterSpacing:1.5, textTransform:"uppercase", marginTop:4, textAlign:"center" }}>7-day tier</div>
-                    <div style={{ fontFamily:"var(--mono)", fontSize:10, color:"var(--text3)", marginTop:3, textAlign:"center", opacity:0.6 }}>no data</div>
+                    <div style={{ fontFamily:"var(--mono)", fontSize:13, fontWeight:700, color:"var(--text3)", letterSpacing:1.5, textTransform:"uppercase", marginTop:4, textAlign:"center" }}>7-day tier</div>
+                    <div style={{ fontFamily:"var(--mono)", fontSize:13, color:"var(--text3)", marginTop:3, textAlign:"center", opacity:0.6 }}>no data</div>
                   </>
                 );
               }
@@ -2839,8 +2811,8 @@ function HomeView({ state, dispatch, showToast, onQuickAdd, onOpenJournal, onEdi
               return (
                 <>
                   <div style={{ fontFamily:"var(--heading)", fontSize:52, fontWeight:900, color, lineHeight:1, textShadow: tier==="S" ? "0 0 18px rgba(255,215,0,0.5)" : "none" }}>{tier}</div>
-                  <div style={{ fontFamily:"var(--mono)", fontSize:10, fontWeight:700, color:"var(--text3)", letterSpacing:1.5, textTransform:"uppercase", marginTop:3 }}>7-day tier</div>
-                  <div style={{ fontFamily:"var(--mono)", fontSize:10, fontWeight:800, color, marginTop:2, opacity:0.85 }}>{sub}</div>
+                  <div style={{ fontFamily:"var(--mono)", fontSize:13, fontWeight:700, color:"var(--text3)", letterSpacing:1.5, textTransform:"uppercase", marginTop:3 }}>7-day tier</div>
+                  <div style={{ fontFamily:"var(--mono)", fontSize:13, fontWeight:800, color, marginTop:2, opacity:0.85 }}>{sub}</div>
                 </>
               );
             })()}
@@ -3690,19 +3662,11 @@ function SettingsView({ state, dispatch, showToast, onSimulate }) {
           ❄️ Grant Freeze Token
         </button>
         <button className="btn btn-full" style={{ background:"var(--purple)", color:"#fff", fontSize:16, fontWeight:800, marginTop:10 }}
-          onClick={() => {
-            if (!(dailyTasks || []).length) { showToast("Add a task wheel item first"); return; }
-            showToast("Opening task wheel…");
-            setTimeout(() => onSimulate && onSimulate("wheel"), 300);
-          }}>
+          onClick={() => { showToast("Opening task wheel…"); setTimeout(() => onSimulate && onSimulate("wheel"), 300); }}>
           ◎ Spin Task Wheel
         </button>
         <button className="btn btn-full" style={{ background:"var(--red)", color:"#fff", fontSize:16, fontWeight:800, marginTop:10 }}
-          onClick={() => {
-            if (!(punishments || []).length) { showToast("Add a punishment first"); return; }
-            showToast("Opening punishment wheel…");
-            setTimeout(() => onSimulate && onSimulate("punishment"), 300);
-          }}>
+          onClick={() => { showToast("Opening punishment wheel…"); setTimeout(() => onSimulate && onSimulate("punishment"), 300); }}>
           ⚡ Spin Punishment Wheel
         </button>
         <button className="btn btn-full" style={{ background:"var(--coral)", color:"#000", fontSize:16, fontWeight:800, marginTop:10 }}
@@ -4910,7 +4874,7 @@ function HwPanel({ cat, items, onCheck, onMove, onReorder, fadingIds, isDropTarg
         <div className="hw-panel-body" onTouchMove={moveTouch} onTouchEnd={endTouch}
           style={{ touchAction:"pan-y" }}>
           {items.length === 0 && (
-            <div style={{ padding:"8px 4px 4px", fontSize:11, color:"var(--text3)", fontFamily:"var(--mono)", fontStyle:"italic" }}>empty</div>
+            <div style={{ padding:"8px 4px 4px", fontSize:13, color:"var(--text3)", fontFamily:"var(--mono)", fontStyle:"italic" }}>empty</div>
           )}
           {items.map((a, i) => {
             const due    = getDueDisplay(a.dueDate);
@@ -4950,7 +4914,7 @@ function HwPanel({ cat, items, onCheck, onMove, onReorder, fadingIds, isDropTarg
           <div className="hw-move-sheet" style={{ zIndex:499 }}
             onClick={e => e.stopPropagation()}>
             <div style={{ width:34,height:3,background:"var(--bg3)",borderRadius:99,margin:"0 auto 14px" }} />
-            <div style={{ fontSize:11,fontWeight:900,color:"var(--text3)",fontFamily:"var(--mono)",letterSpacing:1,textTransform:"uppercase",marginBottom:2 }}>Move to</div>
+            <div style={{ fontSize:13,fontWeight:900,color:"var(--text3)",fontFamily:"var(--mono)",letterSpacing:1,textTransform:"uppercase",marginBottom:2 }}>Move to</div>
             {others.map(c => (
               <div key={c.id} className="hw-move-row"
                 onPointerDown={e => { e.stopPropagation(); onMove(moveTarget, c.id); setMoveTarget(null); }}>
@@ -5608,15 +5572,7 @@ function SpinWheel({ items, onResult, colorMode = "dark" }) {
 
 function DailyTasksModal({ tasks, onDone }) {
   const [result, setResult] = useState(null);
-  if (tasks.length === 0) {
-    return (
-      <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.97)",zIndex:1000,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:20,padding:24 }}>
-        <div style={{ fontFamily:"var(--heading)",fontStyle:"italic",fontSize:32,fontWeight:900,color:"var(--coral)",textAlign:"center",lineHeight:1.2 }}>Today's<br/>bonus task</div>
-        <div style={{ fontSize:19,color:"var(--text2)",fontWeight:600,textAlign:"center",maxWidth:320 }}>Add at least one Daily Task Wheel item in Settings before spinning this preview.</div>
-        <button className="btn btn-full btn-secondary" style={{ maxWidth:280 }} onClick={() => onDone(null)}>Close</button>
-      </div>
-    );
-  }
+  if (tasks.length === 0) { onDone(null); return null; }
   return (
     <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.97)",zIndex:1000,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:28,padding:24 }}>
       <div style={{ fontFamily:"var(--heading)",fontStyle:"italic",fontSize:32,fontWeight:900,color:"var(--coral)",textAlign:"center",lineHeight:1.2 }}>Today's<br/>bonus task</div>
@@ -5635,15 +5591,7 @@ function DailyTasksModal({ tasks, onDone }) {
 
 function PunishmentsModal({ punishments, onDone }) {
   const [result, setResult] = useState(null);
-  if (punishments.length === 0) {
-    return (
-      <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.97)",zIndex:1000,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:20,padding:24 }}>
-        <div style={{ fontFamily:"var(--heading)",fontStyle:"italic",fontSize:32,fontWeight:900,color:"var(--coral)",textAlign:"center",lineHeight:1.2 }}>Yesterday's tasks<br/>were not completed</div>
-        <div style={{ fontSize:19,color:"var(--text2)",fontWeight:600,textAlign:"center",maxWidth:320 }}>Add at least one Punishment Wheel item in Settings before opening this preview.</div>
-        <button className="btn btn-full btn-secondary" style={{ maxWidth:280 }} onClick={onDone}>Close</button>
-      </div>
-    );
-  }
+  if (punishments.length === 0) { onDone(); return null; }
   return (
     <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.97)",zIndex:1000,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:28,padding:24 }}>
       <div style={{ fontFamily:"var(--heading)",fontStyle:"italic",fontSize:32,fontWeight:900,color:"var(--coral)",textAlign:"center",lineHeight:1.2 }}>Yesterday's tasks<br/>were not completed</div>
@@ -5842,7 +5790,7 @@ function SplashGreeting({ userName, userIdentity, onDone, onSaveName }) {
     }}>
       <div style={{ width:"100%", maxWidth:320 }}>
         <div style={{ fontFamily:"var(--heading)", fontSize:38, fontWeight:900, fontStyle:"italic", color:"#fff", marginBottom:8, lineHeight:1 }}>Tempo</div>
-        <div style={{ fontFamily:"var(--mono)", fontSize:11, color:"var(--coral)", letterSpacing:3, textTransform:"uppercase", marginBottom:32 }}>What should we call you?</div>
+        <div style={{ fontFamily:"var(--mono)", fontSize:13, color:"var(--coral)", letterSpacing:3, textTransform:"uppercase", marginBottom:32 }}>What should we call you?</div>
         <input
           autoFocus
           value={inputName}
@@ -6023,7 +5971,7 @@ function OnboardingFlow({ onComplete }) {
         <div style={{ position:"absolute", top:0, right:0, width:200, height:200, opacity:0.07,
           background:"radial-gradient(circle at top right, var(--coral), transparent 70%)", pointerEvents:"none" }} />
 
-        <div style={{ fontFamily:"var(--mono)", fontSize:10, fontWeight:700, color:"var(--coral)",
+        <div style={{ fontFamily:"var(--mono)", fontSize:13, fontWeight:700, color:"var(--coral)",
           letterSpacing:"4px", textTransform:"uppercase", marginBottom:20 }}>
           YOUR DAILY DISCIPLINE APP
         </div>
@@ -6059,7 +6007,7 @@ function OnboardingFlow({ onComplete }) {
       </div>
 
       <div style={{ width:"100%", padding:"28px 28px max(32px,env(safe-area-inset-bottom))" }}>
-        <div style={{ fontFamily:"var(--mono)", fontSize:11, color:"var(--text3)", fontWeight:700,
+        <div style={{ fontFamily:"var(--mono)", fontSize:13, color:"var(--text3)", fontWeight:700,
           textAlign:"center", marginBottom:14, letterSpacing:0.5 }}>
           3 quick questions to get started
         </div>
@@ -6644,7 +6592,7 @@ function TutorialOverlay({ stepIdx, onNext, onBack, onSkip, setTab, activeTab })
         maxHeight: Math.max(160, vh - NAV_H - TOPBAR_H - 20), overflowY:"auto",
       }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:7 }}>
-          <div style={{ fontFamily:"var(--mono)",fontSize:10,fontWeight:800,color:"var(--text3)",letterSpacing:"1.5px",textTransform:"uppercase" }}>
+          <div style={{ fontFamily:"var(--mono)",fontSize:13,fontWeight:800,color:"var(--text3)",letterSpacing:"1.5px",textTransform:"uppercase" }}>
             {stepIdx + 1} / {TUT_STEPS.length}
           </div>
           <div style={{ display:"flex", gap:3 }}>
@@ -7086,7 +7034,7 @@ function App({ user }) {
               </div>
             </div>
               {(() => {
-                const allInst = Object.values(appState.instances || {}).flat();
+                const allInst = Object.values(appState.instances).flat();
                 const fin = allInst.filter(i => i.status !== 'pending');
                 const done = fin.filter(i => i.status === 'completed');
                 const rate = fin.length > 0 ? Math.round(done.length/fin.length*100) : 0;
@@ -7141,9 +7089,7 @@ function App({ user }) {
           <div style={{ height:20 }} />
         </div>
 
-        <NavBar tab={activeTab} setTab={handleTabChange}
-          navHintShown={appState.cfg.navHintShown}
-          onHintShown={() => dispatch({ type:"UPD_CFG", cfg:{ navHintShown:true } })} />
+        {/* Radial nav hidden — using bottom tab bar instead */}
 
 
 
