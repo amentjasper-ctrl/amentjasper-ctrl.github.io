@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0c0c0c" id="theme-color-meta" />
   <title>Tempo</title>
   <!-- Firebase (must load before Babel) -->
   
@@ -2847,8 +2848,8 @@ function HomeView({ state, dispatch, showToast, onQuickAdd, onOpenJournal, onEdi
 
       {/* ── Focus Task (top homework pick) ── */}
       {isToday && (() => {
-        const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
-        const assignments = (state.homework?.assignments || []).filter(a => !a.completed && (!a.dueDate || new Date(a.dueDate) >= weekAgo));
+        const twoDaysAgo2 = new Date(); twoDaysAgo2.setDate(twoDaysAgo2.getDate() - 2); twoDaysAgo2.setHours(0,0,0,0);
+        const assignments = (state.homework?.assignments || []).filter(a => !a.completed && (!a.dueDate || new Date(a.dueDate) >= twoDaysAgo2));
         if (assignments.length === 0) return null;
         const prefs = state.cfg?.hwSortPrefs || null;
         const now = new Date();
@@ -4560,54 +4561,9 @@ function SortSurveyModal({ assignments, existingPrefs, onSave, onClose }) {
         </div>
       ),
     }] : []),
-    {
-      key: "graded",
-      title: "Prioritize graded work?",
-      sub: "Graded assignments get bumped up the list",
-      content: () => (
-        <div className="hw-chip-row" style={{ flexDirection:"column" }}>
-          {[["yes","✦  Yes — graded first"],["no","○  Show everything equally"]].map(([v, label]) => (
-            <button key={v} className={`hw-chip ${(gradedFirst?"yes":"no")===v?"selected":""}`}
-              style={{ textAlign:"left", borderRadius:12, padding:"14px 18px", fontSize:15 }}
-              onClick={() => setGradedFirst(v==="yes")}>
-              {label}
-            </button>
-          ))}
-        </div>
-      ),
-    },
-    {
-      key: "assessment",
-      title: "What stresses you most?",
-      sub: "That type of assignment gets an extra priority boost",
-      content: () => (
-        <div className="hw-chip-row" style={{ flexDirection:"column" }}>
-          {[["tests","📝  Tests & Quizzes"],["essays","✍️  Essays & Papers"],["projects","🗂  Projects & Presentations"],["none","—  No preference"]].map(([v, label]) => (
-            <button key={v} className={`hw-chip ${assessmentPriority===v?"selected":""}`}
-              style={{ textAlign:"left", borderRadius:12, padding:"14px 18px", fontSize:15 }}
-              onClick={() => setAssessmentPriority(v)}>
-              {label}
-            </button>
-          ))}
-        </div>
-      ),
-    },
-    {
-      key: "style",
-      title: "What's your work style?",
-      sub: "Changes how urgency is weighted",
-      content: () => (
-        <div className="hw-chip-row" style={{ flexDirection:"column" }}>
-          {[["crammer","⚡  Crammer — best under pressure"],["balanced","⚖️  Balanced"],["planner","📅  Planner — I like to start early"]].map(([v, label]) => (
-            <button key={v} className={`hw-chip ${workStyle===v?"selected":""}`}
-              style={{ textAlign:"left", borderRadius:12, padding:"14px 18px", fontSize:15 }}
-              onClick={() => setWorkStyle(v)}>
-              {label}
-            </button>
-          ))}
-        </div>
-      ),
-    },
+
+
+
     ...(subjects.length > 0 ? [{
       key: "heavy",
       title: "Heaviest workload classes?",
@@ -4677,22 +4633,7 @@ function SortSurveyModal({ assignments, existingPrefs, onSave, onClose }) {
         </div>
       ),
     },
-    {
-      key: "duetime",
-      title: "When do you usually submit?",
-      sub: "Affects how same-day deadlines are ranked",
-      content: () => (
-        <div className="hw-chip-row" style={{ flexDirection:"column" }}>
-          {[["morning","🌅  Morning of the due date"],["day","☀️  Same day, afternoon"],["night","🌙  Night before"],["anytime","—  Doesn't matter"]].map(([v, label]) => (
-            <button key={v} className={`hw-chip ${dueTimePrefer===v?"selected":""}`}
-              style={{ textAlign:"left", borderRadius:12, padding:"14px 18px", fontSize:15 }}
-              onClick={() => setDueTimePrefer(v)}>
-              {label}
-            </button>
-          ))}
-        </div>
-      ),
-    },
+
   ];
 
   const total    = steps.length;
@@ -5095,10 +5036,11 @@ function HomeworkView({ state, dispatch, showToast }) {
     }
     showToast(`→ ${HW_CATS.find(c=>c.id===toCatId)?.label}`);
   };
-  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
+  const twoDaysAgo = new Date(); twoDaysAgo.setDate(twoDaysAgo.getDate() - 2); twoDaysAgo.setHours(0,0,0,0);
   const prefs = state.cfg?.hwSortPrefs || null;
   const displayList = hw.assignments
-    .filter(a => { if (!a.dueDate) return true; return new Date(a.dueDate) >= weekAgo; })
+    .filter(a => !a.completed)
+    .filter(a => { if (!a.dueDate) return true; return new Date(a.dueDate) >= twoDaysAgo; })
     .sort((a, b) => calcPriorityScoreWithPrefs(b, prefs) - calcPriorityScoreWithPrefs(a, prefs));
 
   // Inbox = no manual category, no pattern match, no AI yet
@@ -5108,7 +5050,7 @@ function HomeworkView({ state, dispatch, showToast }) {
   const getCatItems = (catId) => {
     const items = hw.assignments
       .filter(a => !a.completed)
-      .filter(a => { if (!a.dueDate) return true; return new Date(a.dueDate) >= weekAgo; })
+      .filter(a => { if (!a.dueDate) return true; return new Date(a.dueDate) >= twoDaysAgo; })
       .filter(a => getCategory(a) === catId);
     return items.slice().sort((a, b) => {
       if (!a.dueDate && !b.dueDate) return 0;
@@ -5157,11 +5099,15 @@ function HomeworkView({ state, dispatch, showToast }) {
       const completedTitles = new Set(
         deduped.filter(a => a.completed).map(a => (a.title || "").toLowerCase().trim())
       );
-      const incoming = enriched.filter(a =>
-        !completedTitles.has((a.title || "").toLowerCase().trim())
-      );
+      const syncCutoff = new Date(); syncCutoff.setDate(syncCutoff.getDate() - 2); syncCutoff.setHours(0,0,0,0);
+      const incoming = enriched.filter(a => {
+        if (completedTitles.has((a.title || "").toLowerCase().trim())) return false;
+        if (a.dueDate && new Date(a.dueDate) < syncCutoff) return false;
+        return true;
+      });
 
       const uploadId = `ical_${Date.now()}`;
+      const existingCompleted = deduped.filter(a => a.completed);
       const existingPending = deduped.filter(a => !a.completed);
       const { finalList, newCount, updatedCount } = mergeAssignments(existingPending, incoming, uploadId);
 
@@ -5173,7 +5119,8 @@ function HomeworkView({ state, dispatch, showToast }) {
         if (!finalSeen.has(key)) { finalSeen.add(key); finalDeduped.push(a); }
       }
 
-      const rescored = finalDeduped.map(a => ({ ...a, priorityScore: calcPriorityScore(a) }));
+      const allWithCompleted = [...finalDeduped, ...existingCompleted.filter(c => !finalDeduped.some(f => (f.title||'').toLowerCase().trim() === (c.title||'').toLowerCase().trim()))];
+      const rescored = allWithCompleted.map(a => ({ ...a, priorityScore: calcPriorityScore(a) }));
       const upload = { id:uploadId, uploadedAt:new Date().toISOString(), assignmentCount:parsed.length, newCount, updatedCount, source:"ical" };
       dispatch({ type:"UPD_HOMEWORK", homework:{ assignments:rescored, uploads:[...(freshHw.uploads||[]), upload] } });
       dispatch({ type:"UPD_CFG", cfg:{ icalLastSync: new Date().toISOString() } });
@@ -5223,10 +5170,10 @@ function HomeworkView({ state, dispatch, showToast }) {
   }, [feedUrl, lastSync]);
 
   const toggleComplete = (id) => {
-    dispatch({ type:"UPD_HOMEWORK", homework:{
-      ...hw,
-      assignments: hw.assignments.filter(a => a.id !== id)
-    }});
+    const updated = hw.assignments.map(a =>
+      a.id === id ? { ...a, completed: true, completedAt: new Date().toISOString() } : a
+    );
+    dispatch({ type:"UPD_HOMEWORK", homework:{ ...hw, assignments: updated }});
   };
 
   const setDiffOverride = (id, val) => {
@@ -5311,7 +5258,7 @@ function HomeworkView({ state, dispatch, showToast }) {
               background: state.cfg?.hwSortPrefs ? "rgba(199,125,255,0.1)" : "var(--bg2)",
               color: state.cfg?.hwSortPrefs ? "var(--purple)" : "var(--text3)",
               fontFamily:"var(--mono)", fontSize:15, fontWeight:800, cursor:"pointer" }}>
-            {state.cfg?.hwSortPrefs ? "⚙ Sorted" : "⚙ Sort"}
+            {state.cfg?.hwSortPrefs ? "⚙ Filtered" : "⚙ Filter"}
           </button>
         )}
         <button onClick={doSync} disabled={syncing}
@@ -5336,73 +5283,31 @@ function HomeworkView({ state, dispatch, showToast }) {
         </div>
       )}
 
-      {/* Inbox — uncategorized assignments */}
-      {inboxItems.length > 0 && (
-        <div className="hw-inbox">
-          <div className="hw-inbox-header">
-            <div className="hw-inbox-title">Inbox</div>
-            <div className="hw-inbox-count">{inboxItems.length}</div>
+      {/* Flat assignment list */}
+      {displayList.length > 0 && (
+        <div>
+          <div style={{ fontSize:12, fontWeight:800, color:"var(--text3)", fontFamily:"var(--mono)", letterSpacing:1, textTransform:"uppercase", marginBottom:10 }}>
+            {displayList.length} assignment{displayList.length !== 1 ? "s" : ""}
           </div>
-          {inboxItems.map(a => {
-            const due = getDueDisplay(a.dueDate);
+          {displayList.map(a => {
+            const due    = getDueDisplay(a.dueDate);
+            const stripe = urgencyColor(a.dueDate, a.completed, "var(--coral)");
+            const fading = fadingIds.has(a.id);
             return (
-              <div key={a.id} className="hw-inbox-card">
-                <div className="hw-inbox-title-text">{a.title}</div>
-                <div className={`hw-inbox-due ${due.cls}`}>{due.label}</div>
-                <div className="hw-inbox-cats">
-                  {HW_CATS.map(cat => (
-                    <button key={cat.id} className="hw-inbox-cat-btn"
-                      style={{ background:`${cat.dot}18`, borderColor:cat.dot, color:cat.dot }}
-                      onPointerDown={e => { e.stopPropagation(); handleMove(a.id, cat.id); }}>
-                      {cat.label}
-                    </button>
-                  ))}
+              <div key={a.id} className={`hw-card ${fading ? "fading" : ""}`}
+                style={{ marginBottom:6 }}>
+                <div className="hw-card-stripe" style={{ background:stripe }} />
+                <button className={`hw-card-check ${a.completed ? "done" : ""}`}
+                  onClick={() => toggleComplete(a.id)}>{a.completed ? "✓" : ""}</button>
+                <div className="hw-card-body">
+                  <div className={`hw-card-title ${a.completed ? "done" : ""}`}>{a.title}</div>
+                  <div className={`hw-card-due ${due.cls}`}>{due.label}</div>
                 </div>
               </div>
             );
           })}
         </div>
       )}
-
-      {hw.assignments.length > 0 && (() => {
-        // assignment cat goes left full-height; daily/project/test stack on right
-        const [left, ...right] = HW_CATS; // assignment=left, daily+project+test=right
-        return (
-          <div className="hw-board">
-            {/* Left column: Assignments */}
-            <div className="hw-col-left">
-              <HwPanel
-                cat={left}
-                items={getCatItems(left.id)}
-                onCheck={toggleComplete}
-                onMove={handleMove}
-                onReorder={handleReorder}
-                fadingIds={fadingIds}
-                isDropTarget={dropTarget===left.id}
-                onDragOverPanel={setDropTarget}
-                onDropPanel={(catId) => { if(draggedId) { handleMove(draggedId, catId); setDraggedId(null); setDropTarget(null); } }}
-              />
-            </div>
-            {/* Right column: Daily, Projects, Tests */}
-            <div className="hw-col-right">
-              {right.map(cat => (
-                <HwPanel
-                  key={cat.id}
-                  cat={cat}
-                  items={getCatItems(cat.id)}
-                  onCheck={toggleComplete}
-                  onMove={handleMove}
-                  onReorder={handleReorder}
-                  fadingIds={fadingIds}
-                  isDropTarget={dropTarget===cat.id}
-                  onDragOverPanel={setDropTarget}
-                  onDropPanel={(catId) => { if(draggedId) { handleMove(draggedId, catId); setDraggedId(null); setDropTarget(null); } }}
-                />
-              ))}
-            </div>
-          </div>
-        );
-      })()}
     </div>
   );
 }
@@ -6783,8 +6688,14 @@ function App({ user }) {
 
   useEffect(() => {
     const html = document.documentElement;
-    if (appState.cfg.theme === "claude2") html.setAttribute("data-theme","claude2");
-    else html.removeAttribute("data-theme");
+    const meta = document.getElementById("theme-color-meta");
+    if (appState.cfg.theme === "claude2") {
+      html.setAttribute("data-theme","claude2");
+      if (meta) meta.setAttribute("content", "#f2ede8");
+    } else {
+      html.removeAttribute("data-theme");
+      if (meta) meta.setAttribute("content", "#0c0c0c");
+    }
   }, [appState.cfg.theme]);
 
   const showToast = useCallback((msg) => {
