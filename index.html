@@ -646,9 +646,8 @@ html.iframe-mode .quick-add-fab { display:none !important; }
 /* ── Heatmap ──────────────────────────────────────── */
 .heatmap-wrap { padding:16px 20px; background:var(--bg1); border-radius:16px; border:1px solid var(--border); margin-bottom:20px; }
 
-/* ── Task card completing animation ──────────────── */
-@keyframes taskComplete { 0%{transform:translateX(0);opacity:1} 40%{transform:translateX(18px);opacity:0.6} 100%{transform:translateX(0);opacity:1} }
-.task-card.just-completed { animation:taskComplete 0.4s cubic-bezier(0.34,1.4,0.64,1); }
+/* ── Task complete sweep + shatter ─────────────────── */
+
 
 /* ── Streak badge milestone ───────────────────────── */
 .streak-milestone { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:99px; font-family:var(--mono); font-size:12px; font-weight:800; }
@@ -2020,6 +2019,234 @@ function JournalModal({ date, state, dispatch, onClose, onConfirmComplete }) {
 }
 
 // ── SwipeableTaskCard ────────────────────────────────────
+function TaskCompleteAnimation({ cardRef, accentColor, onDone }) {
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!card) { onDone(); return; }
+    const rect = card.getBoundingClientRect();
+    const W = rect.width, H = rect.height;
+    const isDark = !document.documentElement.hasAttribute('data-theme');
+
+    // Done-bg tint color — semi-transparent so card content shows through
+    const doneTint = isDark ? 'rgba(5,15,8,0.72)' : 'rgba(201,100,66,0.13)';
+
+    // Title right edge — measured from actual rendered text, not element width
+    const titleEl = card.querySelector('[data-anim-title]');
+    let titleRight = W * 0.65;
+    if (titleEl) {
+      try {
+        const textNode = Array.from(titleEl.childNodes).find(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim());
+        const range = document.createRange();
+        if (textNode) range.selectNode(textNode);
+        else range.selectNodeContents(titleEl);
+        titleRight = Math.min(range.getBoundingClientRect().right - rect.left, W - 8);
+      } catch(_) {
+        titleRight = titleEl.getBoundingClientRect().right - rect.left;
+      }
+    }
+
+    // pauseAt computed after textRows measurement below
+    const DPR = Math.min(window.devicePixelRatio || 1, 2);
+    const canvas = document.createElement('canvas');
+    canvas.width  = W * DPR;
+    canvas.height = H * DPR;
+    Object.assign(canvas.style, {
+      position: 'fixed',
+      left: rect.left + 'px', top: rect.top + 'px',
+      width: W + 'px', height: H + 'px',
+      pointerEvents: 'none', zIndex: 592,
+      borderRadius: getComputedStyle(card).borderRadius,
+    });
+    document.body.appendChild(canvas);
+    const ctx = canvas.getContext('2d');
+    ctx.scale(DPR, DPR);
+
+    // Measure actual text row positions AND x bounds using text range (not element width)
+    const PAD = 6;
+    const textEls = Array.from(card.querySelectorAll('[data-anim-title], [data-anim-sub]'));
+    const textRows = textEls.map(el => {
+      const elRect = el.getBoundingClientRect();
+      // Use a Range to measure just the text content width
+      let textRight = elRect.left; // fallback
+      try {
+        const range = document.createRange();
+        // Find first text node
+        const textNode = Array.from(el.childNodes).find(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim());
+        if (textNode) {
+          range.selectNode(textNode);
+        } else {
+          range.selectNodeContents(el);
+        }
+        const rangeRect = range.getBoundingClientRect();
+        textRight = rangeRect.right;
+      } catch(_) {
+        textRight = elRect.right;
+      }
+      return {
+        y:     (elRect.top + elRect.bottom) / 2 - rect.top,
+        start: Math.max(0, elRect.left - rect.left - PAD),
+        end:   Math.min(W, textRight - rect.left + PAD),
+      };
+    }).filter(row => row.end > row.start + 4);
+    if (textRows.length === 0) textRows.push({ y: H*0.38, start: 50, end: W*0.8 });
+
+    // pauseAt: just past the end of the actual title text
+    const pauseAt = Math.min(titleRight + 40, W - 20);
+
+    let startTime = null, phase = 'sweep', sweepX = 0, phaseStart = 0;
+    const SWEEP_DUR  = 1200; // bar sweeps to pauseAt
+    const PAUSE_DUR  = 380;  // brief slowdown
+    const ROCKET_DUR = 220;  // accelerates hard to right edge
+    const easeInOut  = t => t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+    const easeIn     = t => t * t * t;  // accelerating curve for rocket
+
+    function drawFrame(x) {
+      ctx.clearRect(0, 0, W, H);
+
+      // Semi-transparent done-color tint — card content still visible underneath
+      if (x > 1) {
+        ctx.save();
+        ctx.fillStyle = doneTint;
+        ctx.fillRect(0, 0, x, H);
+        ctx.restore();
+      }
+
+      // Strikethrough lines — start/end match actual text bounds per row
+      textRows.forEach(({ y, start, end }) => {
+        if (x > start + 4) {
+          ctx.save();
+          ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.6)' : 'rgba(26,16,8,0.5)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(start, y);
+          ctx.lineTo(Math.min(x - 2, end), y);
+          ctx.stroke();
+          ctx.restore();
+        }
+      });
+
+      // The sweeper bar — glowing accent line
+      ctx.save();
+      ctx.shadowColor = accentColor;
+      ctx.shadowBlur  = 20;
+      ctx.fillStyle   = accentColor;
+      ctx.globalAlpha = 0.9;
+      ctx.fillRect(x - 2, 0, 4, H);
+      ctx.restore();
+    }
+
+    function animate(ts) {
+      if (!startTime) { startTime = ts; phaseStart = ts; }
+
+      if (phase === 'sweep') {
+        const t = Math.min((ts - phaseStart) / SWEEP_DUR, 1);
+        sweepX = easeInOut(t) * pauseAt;
+        drawFrame(sweepX);
+        if (t < 1) { requestAnimationFrame(animate); return; }
+        phase = 'pause'; phaseStart = ts;
+        requestAnimationFrame(animate); return;
+      }
+      if (phase === 'pause') {
+        const t = (ts - phaseStart) / PAUSE_DUR;
+        drawFrame(sweepX + Math.sin(t * Math.PI * 5) * 1.5);
+        if (t < 1) { requestAnimationFrame(animate); return; }
+        phase = 'rocket'; phaseStart = ts;
+        requestAnimationFrame(animate); return;
+      }
+      if (phase === 'rocket') {
+        const t = Math.min((ts - phaseStart) / ROCKET_DUR, 1);
+        sweepX = pauseAt + easeIn(t) * (W - pauseAt + 2);
+        drawFrame(sweepX);
+        if (t < 1) { requestAnimationFrame(animate); return; }
+        // Bar hits right edge — shatter fires instantly
+        canvas.remove();
+        spawnShards(card, rect, accentColor, isDark, onDone);
+      }
+    }
+
+    requestAnimationFrame(animate);
+    return () => { try { canvas.remove(); } catch(_) {} };
+  }, []);
+
+  return null;
+}
+
+function spawnShards(card, rect, accentColor, isDark, onDone) {
+  const W = rect.width, H = rect.height;
+
+  // Hide the original card — shards take over
+  card.style.visibility = 'hidden';
+
+  // Build a grid of clip-path tiles — each is a full-size clone of the card
+  // clipped to show only its tile region, then animated flying outward
+  const COLS = 4, ROWS = 3;
+  const pieces = [];
+
+  for (let row = 0; row < ROWS; row++) {
+    for (let col = 0; col < COLS; col++) {
+      // Tile bounds in percent with jitter for cracked-glass look
+      const jit = () => (Math.random() - 0.5) * 7;
+      const x1 = (col / COLS * 100)       + jit();
+      const y1 = (row / ROWS * 100)       + jit();
+      const x2 = ((col+1) / COLS * 100)   + jit();
+      const y2 = ((row+1) / ROWS * 100)   + jit();
+      const poly = `polygon(${x1}% ${y1}%, ${x2}% ${y1}%, ${x2}% ${y2}%, ${x1}% ${y2}%)`;
+
+      // Clone the full card — this shows all text, buttons, everything
+      const clone = card.cloneNode(true);
+      Object.assign(clone.style, {
+        position: 'fixed',
+        left: rect.left + 'px',
+        top: rect.top + 'px',
+        width: W + 'px',
+        height: H + 'px',
+        margin: '0',
+        pointerEvents: 'none',
+        zIndex: '596',
+        clipPath: poly,
+        visibility: 'visible',
+        // Keep pending look — card was still pending-colored when shatter fires
+        opacity: '1',
+        outline: `1px solid ${isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'}`,
+      });
+      document.body.appendChild(clone);
+
+      // Flight direction: away from tile center relative to card center
+      const tileCX = rect.left + (col + 0.5) / COLS * W;
+      const tileCY = rect.top  + (row + 0.5) / ROWS * H;
+      const cardCX = rect.left + W / 2;
+      const cardCY = rect.top  + H / 2;
+      const angle  = Math.atan2(tileCY - cardCY, tileCX - cardCX);
+      const flyAng = angle + (Math.random() - 0.5) * 0.8;
+      const dist   = 150 + Math.random() * 280;
+      const sx     = Math.cos(flyAng) * dist;
+      const sy     = Math.sin(flyAng) * dist;
+      const rot    = (Math.random() - 0.5) * 540;
+      const dur    = 1800 + Math.random() * 1000;
+      const delay  = Math.random() * 150;
+
+      clone.animate([
+        { transform: 'translate(0,0) rotate(0deg)', opacity: 1 },
+        { transform: `translate(${sx}px,${sy}px) rotate(${rot}deg)`, opacity: 0 },
+      ], {
+        duration: dur,
+        delay,
+        easing: 'cubic-bezier(0.22,1,0.36,1)',
+        fill: 'forwards',
+      });
+
+      pieces.push({ clone, dur, delay });
+    }
+  }
+
+  const totalTime = Math.max(...pieces.map(p => p.dur + p.delay)) + 100;
+  setTimeout(() => {
+    pieces.forEach(({ clone }) => { try { clone.remove(); } catch(_) {} });
+    card.style.visibility = '';
+    onDone();
+  }, totalTime);
+}
+
 function SwipeableTaskCard({ inst, task, cfg, completingIds, onTap, onSwipeComplete, isPending, isDone, isJournal, onDelete, onUndo, onEdit, isPinned }) {
   const cardRef    = useRef(null);
   const startX     = useRef(null);
@@ -2076,13 +2303,22 @@ function SwipeableTaskCard({ inst, task, cfg, completingIds, onTap, onSwipeCompl
   };
 
   const canTap    = isJournal ? true : (isPending && !isDone);
-  const isAnim    = completingIds[inst.id];
+  const isAnim    = !!completingIds[inst.id];
   const borderCol = isJournal && isDone ? "var(--purple)" : isDone ? "var(--green)" : canTap ? "var(--coral)" : "var(--border)";
+  const accentColor = document.documentElement.hasAttribute('data-theme') ? '#c96442' : '#ff5f57';
 
   return (
+    <>
+      {isAnim && (
+        <TaskCompleteAnimation
+          cardRef={cardRef}
+          accentColor={accentColor}
+          onDone={() => {}}
+        />
+      )}
     <div ref={cardRef}
-      className={`task-card ${canTap && !isDone ? "can" : ""} ${isAnim ? "completing" : ""} ${isDone ? "sliding-in" : ""} ${canTap && !isDone ? "pending-wash" : ""} ${swipeState}`}
-      style={{ borderLeft:`5px solid ${borderCol}`, background: isDone ? "var(--done-bg)" : undefined, opacity: isAnim ? 0.6 : 1 }}
+      className={`task-card ${canTap && !isDone ? "can" : ""} ${isDone ? "sliding-in" : ""} ${canTap && !isDone ? "pending-wash" : ""} ${swipeState}`}
+      style={{ borderLeft:`5px solid ${borderCol}`, background: isDone ? "var(--done-bg)" : undefined, opacity: isAnim ? 1 : 1, transition: 'none' }}
       onClick={e => canTap && onTap(inst, e)}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
@@ -2096,7 +2332,7 @@ function SwipeableTaskCard({ inst, task, cfg, completingIds, onTap, onSwipeCompl
       </div>
 
       <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ fontSize:22, fontWeight:800, textDecoration: isDone ? "line-through" : "none",
+        <div data-anim-title style={{ fontSize:22, fontWeight:800, textDecoration: isDone ? "line-through" : "none",
           color: isDone ? "var(--text2)" : "var(--text)", display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
           {task.name}
           {isPinned && !isDone && (
@@ -2109,7 +2345,7 @@ function SwipeableTaskCard({ inst, task, cfg, completingIds, onTap, onSwipeCompl
             </span>
           )}
         </div>
-        <div style={{ fontSize:18, color:"var(--text2)", marginTop:4, fontWeight:600 }}>
+        <div data-anim-sub style={{ fontSize:18, color:"var(--text2)", marginTop:4, fontWeight:600 }}>
           {task.category ? task.category.charAt(0).toUpperCase()+task.category.slice(1) : ""}
         </div>
         {task.notes && (
@@ -2151,6 +2387,7 @@ function SwipeableTaskCard({ inst, task, cfg, completingIds, onTap, onSwipeCompl
         {!isDone && canTap && <div style={{ fontSize:17, fontWeight:700, color:"var(--coral)" }}>swipe ›</div>}
       </div>
     </div>
+    </>
   );
 }
 
@@ -2405,7 +2642,7 @@ function HomeView({ state, dispatch, showToast, onQuickAdd, onOpenJournal, onEdi
       if (allNowDone && updatedList.length > 0) {
         setTimeout(() => setShowPerfectDay(true), 600);
       }
-    }, 480);
+    }, 4600);
   };
 
 
@@ -2679,31 +2916,7 @@ function HomeView({ state, dispatch, showToast, onQuickAdd, onOpenJournal, onEdi
       )}
 
 
-      {/* Mini 4-week heatmap */}
-      {isToday && (() => {
-        const days28 = Array.from({ length: 28 }, (_, i) => {
-          const d = new Date(); d.setDate(d.getDate() - 27 + i); return todayStr(d);
-        });
-        const getColor = (ds) => {
-          const di = instances[ds];
-          if (!di || di.length === 0) return 'var(--bg2)';
-          const pct = di.filter(i => i.status === 'completed').length / di.length;
-          if (pct === 0) return 'rgba(255,59,92,0.15)';
-          if (pct < 0.5) return 'rgba(255,95,87,0.35)';
-          if (pct < 1) return 'rgba(255,95,87,0.65)';
-          return 'var(--coral)';
-        };
-        return (
-          <div style={{ marginBottom:20, padding:"12px 14px", background:"var(--bg1)", borderRadius:12, border:"1px solid var(--border)" }}>
-            <div style={{ fontFamily:"var(--mono)", fontSize:13, fontWeight:700, color:"var(--text3)", letterSpacing:1.5, textTransform:"uppercase", marginBottom:8 }}>4-week history</div>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(28, 1fr)", gap:2 }}>
-              {days28.map(ds => (
-                <div key={ds} title={ds} style={{ aspectRatio:1, borderRadius:2, background:getColor(ds), outline:ds===today?"1.5px solid var(--coral)":"none", outlineOffset:1 }} />
-              ))}
-            </div>
-          </div>
-        );
-      })()}
+
       <div className="day-browser">
         <button className="day-browser-btn" onClick={() => shiftDay(-1)}>‹</button>
         <div className="day-browser-label" style={{ display:"flex", flexDirection:"column", gap:2 }}>
@@ -5470,26 +5683,26 @@ function NavBar({ tab, setTab, navHintShown, onHintShown }) {
 }
 
 // ── Spin wheels ──────────────────────────────────────────
-const RAINBOW_COLORS = [
-  "#ff5f57","#ff9500","#ffcc00","#34c759","#00c7be","#0a84ff","#bf5af2","#ff375f",
-  "#ff6b35","#ffd60a","#30d158","#64d2ff","#5e5ce6","#ff453a","#ff9f0a","#ffe234",
-];
-const PUNISH_COLORS = ["#cc0000","#8b1a2a"];
-
-function SpinWheel({ items, onResult, colorMode = "dark" }) {
+function SpinWheel({ items, onResult, colorMode = "dark", theme = "dark" }) {
   const canvasRef = useRef(null);
   const [spinning, setSpinning] = useState(false);
   const angleRef  = useRef(0);
   const SIZE = 500;
 
+  const isClaude = theme === "claude2";
+
   const getSegColor = (i) => {
-    if (colorMode === "rainbow") return RAINBOW_COLORS[i % RAINBOW_COLORS.length];
-    if (colorMode === "punishment") return PUNISH_COLORS[i % 2];
-    return i % 2 === 0 ? "#1a1a1a" : "#252525";
+    const m = i % 3;
+    if (colorMode === "punishment") {
+      if (isClaude) return m === 0 ? "#f2ede8" : m === 1 ? "#e8ddd5" : "#c0392b";
+      return m === 0 ? "#1a1a1a" : m === 1 ? "#1e0808" : "#3d0000";
+    }
+    if (isClaude) return m === 0 ? "#e8e2db" : m === 1 ? "#ddd6cc" : "#c96442";
+    return m === 0 ? "#1a1a1a" : m === 1 ? "#222222" : "#ff5f57";
   };
   const getTextColor = (i) => {
-    if (colorMode === "punishment") return i % 2 === 0 ? "#ffffff" : "#8b0000";
-    if (colorMode === "rainbow") return "#722f37";
+    const m = i % 3;
+    if (isClaude) return m === 2 ? "#faf9f7" : "#1a1008";
     return "#ffffff";
   };
 
@@ -5502,9 +5715,9 @@ function SpinWheel({ items, onResult, colorMode = "dark" }) {
     ctx.clearRect(0,0,SIZE,SIZE);
     ctx.save();
     ctx.shadowBlur = 32;
-    ctx.shadowColor = colorMode==="punishment"?"rgba(200,0,0,0.5)":colorMode==="rainbow"?"rgba(255,200,0,0.4)":"rgba(255,95,87,0.3)";
+    ctx.shadowColor = colorMode==="punishment"?(isClaude?"rgba(192,57,43,0.4)":"rgba(200,0,0,0.5)"):(isClaude?"rgba(201,100,66,0.3)":"rgba(255,95,87,0.3)");
     ctx.beginPath(); ctx.arc(cx,cy,r+3,0,2*Math.PI);
-    ctx.strokeStyle = colorMode==="punishment"?"#cc0000":colorMode==="rainbow"?"#ffd60a":"#333";
+    ctx.strokeStyle = colorMode==="punishment"?(isClaude?"#c0392b":"#3d0000"):(isClaude?"#c9c0b5":"#333");
     ctx.lineWidth = 6; ctx.stroke(); ctx.restore();
     items.forEach((item,i) => {
       const start = angle+i*seg-Math.PI/2, end = start+seg;
@@ -5522,17 +5735,17 @@ function SpinWheel({ items, onResult, colorMode = "dark" }) {
       ctx.fillText(label, r-16, 0); ctx.restore();
     });
     ctx.beginPath(); ctx.arc(cx,cy,22,0,2*Math.PI);
-    ctx.fillStyle = "#111"; ctx.fill();
-    ctx.strokeStyle = colorMode==="punishment"?"#cc0000":colorMode==="rainbow"?"#ffd60a":"#ff5f57";
+    ctx.fillStyle = isClaude ? "#e8e2db" : "#111"; ctx.fill();
+    ctx.strokeStyle = colorMode==="punishment"?(isClaude?"#c0392b":"#cc0000"):(isClaude?"#c96442":"#ff5f57");
     ctx.lineWidth = 3; ctx.stroke();
     const ptx = cx, pty = cy-r-2;
     ctx.beginPath(); ctx.moveTo(ptx,pty+28); ctx.lineTo(ptx-14,pty); ctx.lineTo(ptx+14,pty); ctx.closePath();
-    ctx.fillStyle = colorMode==="punishment"?"#cc0000":colorMode==="rainbow"?"#ffd60a":"#ff5f57";
-    ctx.shadowBlur = 12; ctx.shadowColor = colorMode==="punishment"?"#cc0000":"#ff5f57";
+    ctx.fillStyle = colorMode==="punishment"?(isClaude?"#c0392b":"#cc0000"):(isClaude?"#c96442":"#ff5f57");
+    ctx.shadowBlur = 12; ctx.shadowColor = colorMode==="punishment"?(isClaude?"#c0392b":"#cc0000"):(isClaude?"#c96442":"#ff5f57");
     ctx.fill(); ctx.shadowBlur = 0;
   };
 
-  useEffect(() => { draw(angleRef.current); }, [items.length, colorMode]);
+  useEffect(() => { draw(angleRef.current); }, [items.length, colorMode, theme]);
 
   const spin = () => {
     if (spinning) return;
@@ -5551,8 +5764,8 @@ function SpinWheel({ items, onResult, colorMode = "dark" }) {
     requestAnimationFrame(animate);
   };
 
-  const btnBg = colorMode==="punishment"?"#cc0000":colorMode==="rainbow"?"#ffd60a":"#ff5f57";
-  const btnColor = colorMode==="rainbow"?"#000":"#fff";
+  const btnBg = colorMode==="punishment"?(isClaude?"#c0392b":"#cc0000"):(isClaude?"#c96442":"#ff5f57");
+  const btnColor = "#fff";
   return (
     <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:24 }}>
       <canvas ref={canvasRef} width={SIZE} height={SIZE}
@@ -5569,14 +5782,14 @@ function SpinWheel({ items, onResult, colorMode = "dark" }) {
   );
 }
 
-function DailyTasksModal({ tasks, onDone }) {
+function DailyTasksModal({ tasks, onDone, theme = "dark" }) {
   const [result, setResult] = useState(null);
   if (tasks.length === 0) { onDone(null); return null; }
   return (
     <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.97)",zIndex:1000,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:28,padding:24 }}>
       <div style={{ fontFamily:"var(--heading)",fontStyle:"italic",fontSize:32,fontWeight:900,color:"var(--coral)",textAlign:"center",lineHeight:1.2 }}>Today's<br/>bonus task</div>
       {!result ? (
-        <SpinWheel items={tasks} colorMode="rainbow" onResult={r=>setResult(r)} />
+        <SpinWheel items={tasks} colorMode="daily" theme={theme} onResult={r=>setResult(r)} />
       ) : (
         <>
           <div style={{ fontSize:26,fontWeight:800,color:"var(--text)",textAlign:"center" }}>You got:<br/><span style={{ color:"var(--coral)" }}>{result}</span></div>
@@ -5588,7 +5801,7 @@ function DailyTasksModal({ tasks, onDone }) {
   );
 }
 
-function PunishmentsModal({ punishments, onDone }) {
+function PunishmentsModal({ punishments, onDone, theme = "dark" }) {
   const [result, setResult] = useState(null);
   if (punishments.length === 0) { onDone(); return null; }
   return (
@@ -5596,7 +5809,7 @@ function PunishmentsModal({ punishments, onDone }) {
       <div style={{ fontFamily:"var(--heading)",fontStyle:"italic",fontSize:32,fontWeight:900,color:"var(--coral)",textAlign:"center",lineHeight:1.2 }}>Yesterday's tasks<br/>were not completed</div>
       <div style={{ fontSize:18,color:"var(--text3)",fontWeight:600,textAlign:"center" }}>Spin to face the consequences</div>
       {!result ? (
-        <SpinWheel items={punishments} colorMode="punishment" onResult={r=>setResult(r)} />
+        <SpinWheel items={punishments} colorMode="punishment" theme={theme} onResult={r=>setResult(r)} />
       ) : (
         <>
           <div style={{ fontSize:26,fontWeight:800,color:"var(--text)",textAlign:"center" }}>Your punishment:<br/><span style={{ color:"var(--red)" }}>{result}</span></div>
@@ -5735,25 +5948,45 @@ function SplashGreeting({ userName, userIdentity, onDone, onSaveName }) {
   const [inputIds, setInputIds]   = React.useState([]);
   const [phase, setPhase]         = React.useState(userName ? "greet" : "ask"); // ask | greet
 
-  const identityGreets = {
-    student:      ["Time to build something.", "Knowledge compounds daily.", "Show up. Level up."],
-    athlete:      ["Train your mind too.", "Discipline is the skill.", "Every rep counts."],
-    creator:      ["Make something today.", "Consistency is your craft.", "Ship it."],
-    professional: ["Lead with intention.", "Another day to execute.", "Results speak."],
-    parent:       ["You set the example.", "One day at a time.", "Showing up matters."],
-    other:        ["Another day to grow.", "Consistency wins.", "You're building something."],
-  };
+  const GREETINGS = [
+    "Hey {name} — let's make today count.",
+    "{name}, your to-do list won't know what hit it.",
+    "Welcome back, {name}. Small steps, big progress.",
+    "Hi {name}. Today's the day you stay ahead.",
+    "{name}, discipline starts with showing up. You already did.",
+    "Good to see you, {name}. Let's get organized.",
+    "Hey {name} — what gets planned, gets done.",
+    "{name}, your future self will thank you for today.",
+    "Welcome, {name}. Let's turn chaos into clarity.",
+    "Hi {name}. One task at a time — you've got this.",
+    "Hey {name} — let's build a day worth being proud of.",
+    "{name}, the most organized version of you starts here.",
+    "Good morning, {name}. What are we conquering today?",
+    "Welcome back, {name}. Progress is just consistency in disguise.",
+    "Hi {name}. Your goals are waiting — let's meet them.",
+    "Hey {name} — no homework stands a chance today.",
+    "{name}, clarity beats busy every time. Let's get clear.",
+    "Welcome, {name}. Structure is freedom — let's build yours.",
+    "Hi {name}. Stack a few good habits and watch what happens.",
+    "Hey {name} — let's make the plan that actually works.",
+    "{name}, focused and ready. That's the energy.",
+    "Good to have you, {name}. Let's check things off.",
+    "Hey {name} — organization is a superpower. Use it.",
+    "{name}, the hardest part is starting. You're already here.",
+    "Welcome back, {name}. Deadlines don't scare prepared people.",
+    "Hi {name}. Let's make your plate feel manageable.",
+    "Hey {name} — your most productive day yet starts now.",
+    "{name}, every checked box is a small win. Let's stack them.",
+    "Welcome, {name}. Less overwhelm, more momentum — let's go.",
+    "Hi {name}. The plan is simple: show up, stay focused, get it done.",
+  ];
 
   const fullText = React.useMemo(() => {
     const fullName = userName || inputName;
     const firstName = fullName ? fullName.trim().split(" ")[0] : "";
-    const id = userIdentity || (inputIds.length ? inputIds[0] : "other");
-    const hour = new Date().getHours();
-    const timeGreet = hour < 5 ? "Up late" : hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : hour < 21 ? "Good evening" : "Good night";
-    const pool = identityGreets[id] || identityGreets.other;
-    const tagline = pool[Math.floor(Math.random() * pool.length)];
-    return firstName ? `${timeGreet}, ${firstName}. ${tagline}` : `${timeGreet}. ${tagline}`;
-  }, [phase]); // only recompute when we transition to greet phase
+    const template = GREETINGS[Math.floor(Math.random() * GREETINGS.length)];
+    return firstName ? template.replace(/\{name\}/g, firstName) : template.replace(/\{name\}[,—]?\s*/g, "").replace(/^,\s*/, "").replace(/^\s+/, "").replace(/^[a-z]/, c => c.toUpperCase());
+  }, [phase]);
 
   React.useEffect(() => {
     if (phase !== "greet") return;
@@ -6228,14 +6461,6 @@ const TUT_STEPS = [
     btn: "Nice \u2192",
   },
   {
-    id: "home_heatmap",
-    tab: "home",
-    heatmapFallback: true,
-    title: "4-week history",
-    body: "This grid shows the last 28 days. Brighter coral = more tasks done. A single missed day shows clearly \u2014 use that to stay motivated.",
-    btn: "Love it \u2192",
-  },
-  {
     id: "home_tasks",
     tab: "home",
     domQuery: [".sec-head", ".task-card"],
@@ -6382,22 +6607,8 @@ function TutorialOverlay({ stepIdx, onNext, onBack, onSkip, setTab, activeTab })
     if (step.openTaskForm || step.openCalEvent) return document.querySelector(".sheet");
     if (step.calEventBtn)   { let f=null; document.querySelectorAll("button").forEach(b=>{ if(!f&&b.textContent.trim()==="\u002B Event")f=b; }); return f; }
     if (step.goToSettings)  { let f=null; document.querySelectorAll(".card").forEach(c=>{ if(!f&&(c.textContent.includes("Canvas Feed")||c.textContent.includes("iCal")))f=c; }); return f; }
-    if (step.heatmapFallback) return findHeatmap();
     if (step.domQuery)      { const q=Array.isArray(step.domQuery)?step.domQuery[0]:step.domQuery; return q?document.querySelector(q):null; }
     return null;
-  }
-
-  function findHeatmap() {
-    let found = null;
-    document.querySelectorAll("div").forEach(d => {
-      if (!found && d.children.length === 28 && d.style.gridTemplateColumns) found = d.parentElement;
-    });
-    if (!found) {
-      document.querySelectorAll("div").forEach(d => {
-        if (!found && d.textContent.trim().startsWith("4-week")) found = d.closest("[style]") || d.parentElement;
-      });
-    }
-    return found;
   }
 
   function measureRects() {
@@ -6962,7 +7173,7 @@ function App({ user }) {
       )}
 
       {showDailyWheel && !showPunishment && (
-        <DailyTasksModal tasks={appState.cfg.dailyTasks||[]}
+        <DailyTasksModal tasks={appState.cfg.dailyTasks||[]} theme={appState.cfg.theme||"dark"}
           onDone={selectedTask => {
             setShowDailyWheel(false);
             dispatch({ type:"UPD_CFG", cfg:{ lastDailySpin:todayStr() } });
@@ -6970,7 +7181,7 @@ function App({ user }) {
           }} />
       )}
       {showPunishment && (
-        <PunishmentsModal punishments={appState.cfg.punishments||[]}
+        <PunishmentsModal punishments={appState.cfg.punishments||[]} theme={appState.cfg.theme||"dark"}
           onDone={() => {
             setShowPunishment(false);
             const yest = new Date(); yest.setDate(yest.getDate()-1);
