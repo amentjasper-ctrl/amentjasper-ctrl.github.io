@@ -8,9 +8,9 @@
   <title>Tempo</title>
   <!-- Firebase (must load before Babel) -->
   
-  <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.development.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+  <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.development.js"></script>
+  <script crossorigin src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
   <style>
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,600&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap');
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -33,6 +33,15 @@
   --green:#c96442; --red:#c0392b; --blue:#3d6fa8; --purple:#7b5ea7;
   --done-bg:rgba(201,100,66,0.06); --done-line:rgba(201,100,66,0.2); --btn-text:#faf9f7;
 }
+[data-theme="nightfall"] {
+  --bg:#003049; --bg1:#003049; --bg2:#003049; --bg3:#003049; --border:#0a4060;
+  --text:#fff8ec; --text2:#fcbf49; --text3:#c8883a;
+  --coral:#f77f00; --coral2:#fcbf49; --coralg:rgba(247,127,0,0.15);
+  --green:#fcbf49; --red:#d62828; --blue:#5ba3c9; --purple:#f77f00;
+  --done-bg:rgba(252,191,73,0.07); --done-line:rgba(252,191,73,0.2); --btn-text:#003049;
+}
+html:has([data-theme="nightfall"]),body:has([data-theme="nightfall"]) { background:#003049; }
+html[data-theme="nightfall"] .shell { background:#003049; }
 html:has([data-theme="claude2"]),body:has([data-theme="claude2"]) { background:#faf9f7; }
 html[data-theme="claude2"] .shell { background:#faf9f7; }
 html,body,#root { height:100%; width:100%; background:var(--bg,#000); overflow:hidden; }
@@ -44,10 +53,8 @@ body { font-family:var(--font); font-size:26px; color:var(--text); -webkit-font-
 .topbar-brand { display:flex; align-items:center; gap:9px; min-width:0; }
 .topbar-brand-lockup { display:flex; flex-direction:column; line-height:1; gap:1px; min-width:0; }
 .topbar-expanded-ribbon { will-change:transform,opacity; }
-.topbar-collapsed-ribbon { position:absolute; left:0; right:0; top:max(6px,env(safe-area-inset-top)); display:flex; align-items:center; pointer-events:none; will-change:transform,opacity; }
+.topbar-collapsed-ribbon { position:absolute; left:22px; right:22px; top:max(6px,env(safe-area-inset-top)); display:flex; align-items:center; pointer-events:none; will-change:transform,opacity; }
 .topbar-collapsed-ribbon .time-ribbon { width:100%; }
-.topbar-collapsed-ribbon .time-track { height:6px !important; background:rgba(255,255,255,0.06); box-shadow:inset 0 0 0 1px rgba(255,255,255,0.03); }
-[data-theme="claude2"] .topbar-collapsed-ribbon .time-track { background:rgba(26,16,8,0.08); box-shadow:inset 0 0 0 1px rgba(26,16,8,0.06); }
 .logo { font-size:38px; font-weight:900; color:var(--coral); letter-spacing:-0.5px; font-family:var(--heading); line-height:1; }
 .scroll { overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; padding:28px 22px calc(80px + env(safe-area-inset-bottom)); }
 .bottom-nav { display:none !important; }
@@ -161,7 +168,7 @@ textarea.field.tw-placeholder::placeholder { color:transparent; }
 .redeem-btn.can  { background:var(--coral); color:var(--btn-text); }
 .redeem-btn.cant { background:var(--bg3); color:var(--text3); cursor:default; }
 .hist-row { display:flex; justify-content:space-between; align-items:center; padding:18px 0; }
-.empty { text-align:center; padding:60px 20px; color:var(--text2); }
+.empty { text-align:center; padding:28px 20px; color:var(--text2); }
 .empty-emoji { font-size:60px; margin-bottom:18px; }
 .empty-msg { font-size:var(--t-lg); font-weight:700; font-family:var(--heading); }
 .empty-sub { font-size:var(--t-md); margin-top:8px; }
@@ -909,6 +916,9 @@ html.iframe-mode .quick-add-fab { display:none !important; }
         if (cfg && cfg.theme === "claude2") {
           document.documentElement.setAttribute("data-theme", "claude2");
           document.documentElement.style.background = "#faf9f7";
+        } else if (cfg && cfg.theme === "nightfall") {
+          document.documentElement.setAttribute("data-theme", "nightfall");
+          document.documentElement.style.background = "#003049";
         }
       }
     } catch(e) {}
@@ -917,7 +927,7 @@ html.iframe-mode .quick-add-fab { display:none !important; }
 </head>
 <body>
 <div id="root"></div>
-<script type="text/babel">
+<script id="app-source" type="text/plain">
 const { useState, useEffect, useRef, useCallback, Fragment } = React;
 
 // ── Constants ───────────────────────────────────────────
@@ -1109,7 +1119,13 @@ function appReducer(state, action) {
       if (allDone) {
         const today = todayStr();
         const yest  = new Date(); yest.setDate(yest.getDate() - 1);
-        cur     = lastDay === todayStr(yest) ? cur + 1 : 1;
+        if (lastDay === today) {
+          // already incremented today, leave cur alone
+        } else if (lastDay === todayStr(yest)) {
+          cur = cur + 1;
+        } else {
+          cur = 1;
+        }
         best    = Math.max(best, cur);
         lastDay = today;
         // Award freeze token at every 7-day milestone
@@ -1196,7 +1212,7 @@ function appReducer(state, action) {
       const now  = new Date();
       const task = (state.weeklyTasks || []).find(t => t.id === action.id);
       let pts = 50;
-      if (task?.completedBy !== "" && task?.completedBy !== undefined) {
+      if (!task?.completedBy) {
         const mon     = d => (d + 6) % 7;
         const daysLeft = Math.max(0, Math.min(1, 1 - (mon(now.getDay()) + 7) % 7 / 7));
         pts = Math.round(30 + daysLeft * 70);
@@ -2304,6 +2320,7 @@ function SwipeableTaskCard({ inst, task, cfg, completingIds, onTap, onSwipeCompl
 
   const canTap    = isJournal ? true : (isPending && !isDone);
   const isAnim    = !!completingIds[inst.id];
+  const animDone  = typeof completingIds[inst.id] === 'function' ? completingIds[inst.id] : () => {};
   const borderCol = isJournal && isDone ? "var(--purple)" : isDone ? "var(--green)" : canTap ? "var(--coral)" : "var(--border)";
   const accentColor = document.documentElement.hasAttribute('data-theme') ? '#c96442' : '#ff5f57';
 
@@ -2313,7 +2330,7 @@ function SwipeableTaskCard({ inst, task, cfg, completingIds, onTap, onSwipeCompl
         <TaskCompleteAnimation
           cardRef={cardRef}
           accentColor={accentColor}
-          onDone={() => {}}
+          onDone={animDone}
         />
       )}
     <div ref={cardRef}
@@ -2558,11 +2575,11 @@ function HomeView({ state, dispatch, showToast, onQuickAdd, onOpenJournal, onEdi
       if (!t.days.includes(dayOfWeek)) return false;
       if (t.repeat === false && t.createdAt) {
         const created = t.createdAt.slice(0, 10);
-        if (created !== today) return false;
+        if (created !== browseDate) return false;
       }
       return true;
     });
-    const extraTasks  = (state.tomorrowTasks || []).filter(t => t.forDate <= today);
+    const extraTasks  = (state.tomorrowTasks || []).filter(t => t.forDate === today);
     const saved       = instances[today] || [];
     const completedMap = {};
     saved.forEach(i => {
@@ -2605,20 +2622,20 @@ function HomeView({ state, dispatch, showToast, onQuickAdd, onOpenJournal, onEdi
       const rect = confettiEvent.currentTarget?.getBoundingClientRect?.();
       if (rect) setConfettiPos({ x: rect.left+22, y: rect.top+22 });
     }
-    setCompletingIds(m => merge(m, { [inst.id]: true }));
-    setTimeout(() => {
-      dispatch({ type:"COMPLETE", date:browseDate, id:inst.id, list:todayInstList });
-      setCompletingIds(m => { const n={...m}; delete n[inst.id]; return n; });
-      showToast('✓ ' + (task?.name||''));
-      // Completion chime
+    const instId = inst.id;
+    const instSnapshot = { ...inst };
+    const taskSnapshot = task;
+    const listSnapshot = [...todayInstList];
+    const onAnimDone = () => {
+      dispatch({ type:"COMPLETE", date:browseDate, id:instId, list:listSnapshot });
+      setCompletingIds(m => { const n={...m}; delete n[instId]; return n; });
+      showToast('✓ ' + (taskSnapshot?.name||''));
       playChime();
-      // Haptic feedback
       if (cfg.haptics && navigator.vibrate) navigator.vibrate([30, 10, 60]);
-      // Streak milestone toast + big confetti
-      const newStreak = state.streak.cur + 1;
+      const willIncrement = state.streak.lastDay !== today;
+      const newStreak = willIncrement ? state.streak.cur + 1 : state.streak.cur;
       if ([7, 14, 21, 30, 60, 100].includes(newStreak)) {
         setTimeout(() => showToast('🔥 ' + newStreak + '-day streak! Keep going.'), 800);
-        // Big confetti burst for milestone streaks
         setTimeout(() => {
           const colors = ['#ff5f57','#00e5a0','#ff8a82','#c77dff','#4cc9f0','#ffd166','#fff'];
           for (let i = 0; i < 55; i++) {
@@ -2630,19 +2647,18 @@ function HomeView({ state, dispatch, showToast, onQuickAdd, onOpenJournal, onEdi
           }
         }, 400);
       }
-      // Variable reward: show motivational card after 3+ completions
       const newCount = completedCountRef.current + 1;
       completedCountRef.current = newCount;
       if (newCount >= 3 && newCount % 3 === 0) {
         setTimeout(() => setShowMotivCard(true), 400);
       }
-      // Perfect day check
-      const updatedList = todayInstList.map(i => i.id === inst.id ? { ...i, status: 'completed' } : i);
+      const updatedList = listSnapshot.map(i => i.id === instId ? { ...i, status: 'completed' } : i);
       const allNowDone = updatedList.every(i => i.status === 'completed');
       if (allNowDone && updatedList.length > 0) {
         setTimeout(() => setShowPerfectDay(true), 600);
       }
-    }, 4600);
+    };
+    setCompletingIds(m => merge(m, { [instId]: onAnimDone }));
   };
 
 
@@ -3048,15 +3064,19 @@ function HomeView({ state, dispatch, showToast, onQuickAdd, onOpenJournal, onEdi
 
       {total === 0 && (
         <div className="empty">
-          <div style={{ fontSize:64, marginBottom:16, filter:"drop-shadow(0 0 16px rgba(255,95,87,0.3))" }}>{isToday ? "✦" : "◇"}</div>
+          <div style={{ fontSize:52, marginBottom:10, filter:"drop-shadow(0 0 16px rgba(255,95,87,0.3))" }}>{isToday ? "✦" : "◇"}</div>
           <div className="empty-msg">{isToday ? "A clear slate" : "Nothing that day"}</div>
-          <div className="empty-sub">{isToday ? "Add tasks in the Tasks tab to start building your streak." : "No tasks were scheduled."}</div>
           {isToday && streak.cur > 0 && (
-            <div style={{ marginTop:16, display:"inline-flex", alignItems:"center", gap:8, padding:"10px 18px", borderRadius:99, background:"var(--coralg)", border:"1px solid var(--coral)", fontFamily:"var(--mono)", fontSize:13, fontWeight:800, color:"var(--coral)" }}>
+            <div style={{ marginTop:10, display:"inline-flex", alignItems:"center", gap:8, padding:"8px 16px", borderRadius:99, background:"var(--coralg)", border:"1px solid var(--coral)", fontFamily:"var(--mono)", fontSize:13, fontWeight:800, color:"var(--coral)" }}>
               🔥 {streak.cur}-day streak · keep it alive
             </div>
           )}
-          <div className="empty-tagline">Every habit began with a first rep.</div>
+          {isToday && (
+            <div style={{ marginTop:14 }}>
+              <InlineQuickAdd onAdd={handleQuickAddInline} recentTasks={tasks} todayNames={browseInst.map(i=>(enrichedTasks[i.taskId]||(state.tomorrowTasks||[]).find(t=>t.id===i.taskId)||{}).name).filter(Boolean)} />
+            </div>
+          )}
+          <div className="empty-tagline" style={{ marginTop:10 }}>Every habit begins with a first step.</div>
         </div>
       )}
 
@@ -3400,7 +3420,23 @@ function TasksView({ state, dispatch, showToast }) {
   const isVisible = (t) => {
     if (t.active === false) return false;
     if (t.repeat === false && t.createdAt) {
-      return t.createdAt.slice(0,10) === todayDateStr;
+      // Hide once all scheduled days of the week have passed since creation
+      const created = new Date(t.createdAt.slice(0,10) + 'T00:00:00');
+      const todayDate = new Date(todayDateStr + 'T00:00:00');
+      const days = t.days || [];
+      if (days.length === 0) return t.createdAt.slice(0,10) === todayDateStr;
+      // Find the next occurrence of any scheduled day on or after creation
+      let latestOccurrence = null;
+      for (let d = 0; d <= 6; d++) {
+        const dow = (created.getDay() + d) % 7;
+        if (days.includes(dow)) {
+          const candidate = new Date(created);
+          candidate.setDate(candidate.getDate() + d);
+          if (!latestOccurrence || candidate > latestOccurrence) latestOccurrence = candidate;
+        }
+      }
+      if (!latestOccurrence) return false;
+      return latestOccurrence >= todayDate;
     }
     return true;
   };
@@ -3645,6 +3681,8 @@ function SettingsView({ state, dispatch, showToast, onSimulate }) {
   const [importError, setImportError]     = useState("");
   const [newPunishment, setNewPunishment] = useState("");
   const [newDailyTask, setNewDailyTask]   = useState("");
+  const [dailyWheelOpen, setDailyWheelOpen]   = useState(false);
+  const [punishWheelOpen, setPunishWheelOpen] = useState(false);
 
   const punishments = cfg.punishments || [];
   const dailyTasks  = cfg.dailyTasks  || [];
@@ -3681,10 +3719,10 @@ function SettingsView({ state, dispatch, showToast, onSimulate }) {
         <div className="setting-row">
           <div>
             <div className="setting-label">Theme</div>
-            <div className="setting-sub">Dark or Claude</div>
+            
           </div>
           <div style={{ display:"flex",gap:8 }}>
-            {[["dark","Dark"],["claude2","Claude"]].map(([val,label]) => (
+            {[["dark","Dark"],["claude2","Claude"],["nightfall","Nightfall"]].map(([val,label]) => (
               <button key={val} onClick={() => setCfg("theme",val)}
                 style={{ padding:"10px 18px",borderRadius:10,border:`1.5px solid ${cfg.theme===val?"var(--coral)":"var(--border)"}`,background:cfg.theme===val?"var(--coral)":"var(--bg2)",color:cfg.theme===val?"var(--btn-text)":"var(--text2)",fontFamily:"var(--font)",fontSize:18,fontWeight:800,cursor:"pointer" }}>
                 {label}
@@ -3692,27 +3730,23 @@ function SettingsView({ state, dispatch, showToast, onSimulate }) {
             ))}
           </div>
         </div>
-        <div className="setting-row" style={{ borderBottom:"none" }}>
-          <div>
-            <div className="setting-label">Haptic Feedback</div>
-            <div className="setting-sub">Vibrate on task completion</div>
-          </div>
-          <div onClick={() => setCfg("haptics", !cfg.haptics)} style={{ width:44,height:26,borderRadius:99,padding:3,background:cfg.haptics?"var(--coral)":"var(--bg3)",display:"flex",alignItems:"center",justifyContent:cfg.haptics?"flex-end":"flex-start",transition:"all 0.2s",cursor:"pointer",flexShrink:0 }}>
-            <div style={{ width:20,height:20,borderRadius:"50%",background:"#fff" }} />
-          </div>
-        </div>
+
       </div>
 
       <div className="card">
-        <div className="section-title">Daily Task Wheel</div>
-        <div style={{ fontSize:18,color:"var(--text2)",marginBottom:16,lineHeight:1.6 }}>Spins on first app open each day. Add up to 10.</div>
-        {dailyTasks.map((task,i) => (
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", cursor:"pointer" }} onClick={() => setDailyWheelOpen(o => !o)}>
+          <div className="section-title" style={{ marginBottom:0 }}>Daily Task Wheel</div>
+          <span style={{ fontSize:13, fontFamily:"var(--mono)", fontWeight:700, color:"var(--text3)" }}>{dailyWheelOpen ? "▲ collapse" : "▼ expand"}</span>
+        </div>
+        {!dailyWheelOpen && <div style={{ fontSize:15, color:"var(--text3)", marginTop:6, fontFamily:"var(--mono)" }}>{dailyTasks.length} item{dailyTasks.length !== 1 ? "s" : ""}</div>}
+        {dailyWheelOpen && <div style={{ fontSize:18,color:"var(--text2)",margin:"12px 0 16px",lineHeight:1.6 }}>Spins on first app open each day. Add up to 10.</div>}
+        {dailyWheelOpen && dailyTasks.map((task,i) => (
           <div key={i} style={{ display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px" }}>
             <div style={{ fontSize:19,fontWeight:700 }}>{task}</div>
             <button onClick={() => setCfg("dailyTasks",dailyTasks.filter((_,j)=>j!==i))} style={{ background:"none",border:"none",color:"var(--red)",fontSize:22,cursor:"pointer",fontWeight:700,padding:"4px 8px" }}>×</button>
           </div>
         ))}
-        {dailyTasks.length < 10 && (
+        {dailyWheelOpen && dailyTasks.length < 10 && (
           <div style={{ display:"flex",gap:8,marginTop:8 }}>
             <input className="field" style={{ flex:1,marginBottom:0 }} value={newDailyTask}
               onChange={e=>setNewDailyTask(e.target.value)}
@@ -3722,7 +3756,7 @@ function SettingsView({ state, dispatch, showToast, onSimulate }) {
               onClick={() => { if(newDailyTask.trim()){setCfg("dailyTasks",[...dailyTasks,newDailyTask.trim()]);setNewDailyTask("");} }}>Add</button>
           </div>
         )}
-        {dailyTasks.length < 10 && (() => {
+        {dailyWheelOpen && dailyTasks.length < 10 && (() => {
           const suggestions = ["Meditate 10 min","Cold shower","Read 20 pages","Journal entry","10 min walk","Stretch routine","No phone first hour","Drink 2L water","Gratitude list","Review your goals","5 min breathing","Clean your space","Plan tomorrow","No social media","20 min workout","Healthy breakfast","Vitamin & supplements","Call a friend or family","Learn something new","Evening reflection"];
           const available = suggestions.filter(s => !dailyTasks.includes(s));
           if (available.length === 0) return null;
@@ -3743,15 +3777,19 @@ function SettingsView({ state, dispatch, showToast, onSimulate }) {
       </div>
 
       <div className="card">
-        <div className="section-title">Punishment Wheel</div>
-        <div style={{ fontSize:18,color:"var(--text2)",marginBottom:16,lineHeight:1.6 }}>If you miss tasks, a wheel spins on next open. Add up to 10.</div>
-        {punishments.map((p,i) => (
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", cursor:"pointer" }} onClick={() => setPunishWheelOpen(o => !o)}>
+          <div className="section-title" style={{ marginBottom:0 }}>Punishment Wheel</div>
+          <span style={{ fontSize:13, fontFamily:"var(--mono)", fontWeight:700, color:"var(--text3)" }}>{punishWheelOpen ? "▲ collapse" : "▼ expand"}</span>
+        </div>
+        {!punishWheelOpen && <div style={{ fontSize:15, color:"var(--text3)", marginTop:6, fontFamily:"var(--mono)" }}>{punishments.length} item{punishments.length !== 1 ? "s" : ""}</div>}
+        {punishWheelOpen && <div style={{ fontSize:18,color:"var(--text2)",margin:"12px 0 16px",lineHeight:1.6 }}>If you miss tasks, a wheel spins on next open. Add up to 10.</div>}
+        {punishWheelOpen && punishments.map((p,i) => (
           <div key={i} style={{ display:"flex",alignItems:"center",gap:12,padding:"12px 0" }}>
             <div style={{ flex:1,fontSize:20,fontWeight:600 }}>{p}</div>
             <button onClick={() => setCfg("punishments",punishments.filter((_,j)=>j!==i))} style={{ background:"none",border:"none",color:"var(--red)",fontSize:22,cursor:"pointer",fontWeight:700,padding:"4px 8px" }}>×</button>
           </div>
         ))}
-        {punishments.length < 10 && (
+        {punishWheelOpen && punishments.length < 10 && (
           <div style={{ display:"flex",gap:10,marginTop:16 }}>
             <input className="field" style={{ marginBottom:0,flex:1 }} value={newPunishment}
               onChange={e=>setNewPunishment(e.target.value)}
@@ -3761,7 +3799,7 @@ function SettingsView({ state, dispatch, showToast, onSimulate }) {
               onClick={() => { if(newPunishment.trim()){setCfg("punishments",[...punishments,newPunishment.trim()]);setNewPunishment("");} }}>Add</button>
           </div>
         )}
-        {punishments.length < 10 && (() => {
+        {punishWheelOpen && punishments.length < 10 && (() => {
           const suggestions = ["50 push-ups","1 mile run","Cold shower","No phone 2 hours","100 jumping jacks","Plank for 2 minutes","Write 200 words","No dessert today","Wake up 1hr earlier","50 squats","Donate $5","Delete a social app","30 min no screens","Extra chore","Skip a meal out","20 min jog","No music today","Write apology letter to self","Burpees × 30","Go to bed 1hr early"];
           const available = suggestions.filter(s => !punishments.includes(s));
           if (available.length === 0) return null;
@@ -3781,99 +3819,6 @@ function SettingsView({ state, dispatch, showToast, onSimulate }) {
         })()}
       </div>
 
-      <div className="card">
-        <div className="section-title">Reminders</div>
-        {(() => {
-          const notifSupported = typeof Notification !== "undefined";
-          const granted = notifSupported && Notification.permission === "granted";
-          const enabled = cfg.notifEnabled && granted;
-          return (
-            <div>
-              <div style={{ fontSize:15, color:"var(--text2)", marginBottom:16, lineHeight:1.6 }}>
-                Get a nudge if you still have tasks left at a chosen time each day.
-              </div>
-              {!notifSupported && (
-                <div style={{ fontSize:14, color:"var(--text3)", fontFamily:"var(--mono)" }}>Notifications not supported in this browser.</div>
-              )}
-              {notifSupported && (
-                <>
-                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
-                    <div style={{ fontWeight:700, fontSize:16 }}>{granted ? "Reminders enabled" : "Allow reminders"}</div>
-                    <button
-                      onClick={async () => {
-                        if (!granted) {
-                          const perm = await Notification.requestPermission();
-                          if (perm === "granted") {
-                            setCfg("notifEnabled", true);
-                            showToast("Reminders on ✓");
-                          } else {
-                            showToast("Permission denied — enable in browser settings");
-                          }
-                        } else {
-                          setCfg("notifEnabled", !cfg.notifEnabled);
-                          showToast(cfg.notifEnabled ? "Reminders off" : "Reminders on ✓");
-                        }
-                      }}
-                      style={{
-                        width:52, height:28, borderRadius:99, border:"none", cursor:"pointer",
-                        background: enabled ? "var(--coral)" : "var(--bg3)",
-                        position:"relative", transition:"background 0.2s",
-                      }}>
-                      <div style={{
-                        position:"absolute", top:3, left: enabled ? 26 : 3,
-                        width:22, height:22, borderRadius:"50%", background:"#fff",
-                        transition:"left 0.2s", boxShadow:"0 1px 4px rgba(0,0,0,0.3)",
-                      }} />
-                    </button>
-                  </div>
-                  {granted && cfg.notifEnabled && (
-                    <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                      <div style={{ fontSize:14, color:"var(--text3)", fontFamily:"var(--mono)" }}>Remind me at</div>
-                      <input
-                        type="time"
-                        value={cfg.notifTime || "21:00"}
-                        onChange={e => setCfg("notifTime", e.target.value)}
-                        style={{
-                          background:"var(--bg2)", border:"1px solid var(--border)",
-                          borderRadius:8, color:"var(--text)", fontFamily:"var(--mono)",
-                          fontSize:16, fontWeight:700, padding:"6px 10px", outline:"none",
-                        }}
-                      />
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          );
-        })()}
-      </div>
-      <div className="card mt8">
-        <div className="section-title">Backup &amp; Restore</div>
-        <div style={{ fontSize:19,color:"var(--text2)",lineHeight:1.7,marginBottom:18 }}>Export saves all tasks, history, streak, points, and settings.</div>
-        <button className="btn btn-full btn-primary" style={{ marginBottom:10 }} onClick={handleExport}>Export Backup</button>
-        <input ref={fileInputRef} type="file" accept=".json" style={{ display:"none" }} onChange={handleFileSelect} />
-        <button className="btn btn-full btn-ghost" onClick={() => fileInputRef.current?.click()}>Import Backup</button>
-        {importError && <div style={{ marginTop:14,fontSize:18,color:"var(--red)",fontWeight:700 }}>{importError}</div>}
-        {importSummary && (
-          <div style={{ marginTop:18,padding:"16px",background:"var(--bg2)",borderRadius:14,border:"1px solid var(--border)" }}>
-            <div style={{ fontSize:20,fontWeight:800,marginBottom:12 }}>Backup Preview</div>
-            {[["Tasks",importSummary.totalTasks],["Days tracked",importSummary.totalDaysTracked],["Completion",importSummary.completionRate+"%"],["Streak",importSummary.currentStreak],["Points",importSummary.totalPoints]].map(([k,v]) => (
-              <div key={k} style={{ display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid var(--border)" }}>
-                <span style={{ color:"var(--text3)",fontSize:18 }}>{k}</span>
-                <span style={{ fontWeight:800,fontSize:18 }}>{v}</span>
-              </div>
-            ))}
-            <div style={{ display:"flex",gap:10,marginTop:16 }}>
-              <button className="btn btn-primary" style={{ flex:1,padding:14,fontSize:18 }}
-                onClick={() => { dispatch({type:"IMPORT",data:mergeImport(importPreview,state)}); showToast("Imported!"); setImportPreview(null); setImportSummary(null); }}>
-                Merge Import
-              </button>
-              <button className="btn btn-secondary" style={{ padding:"14px 16px",fontSize:18 }}
-                onClick={() => { setImportPreview(null); setImportSummary(null); }}>Cancel</button>
-            </div>
-          </div>
-        )}
-      </div>
 
       {/* Canvas iCal Feed */}
       <div className="card">
@@ -5279,6 +5224,11 @@ function HomeworkView({ state, dispatch, showToast }) {
   // Category order map: { [categoryId]: [id, id, ...] } for manual reordering
   const catOrder = state.cfg?.hwCatOrder || {};
 
+  const [icalInput, setIcalInput] = useState("");
+  const [showHow, setShowHow] = useState(false);
+  const [showHowMobile, setShowHowMobile] = useState(false);
+  const [showHowDesktop, setShowHowDesktop] = useState(false);
+
   const setCatMap = (newMap) =>
     dispatch({ type:"UPD_CFG", cfg:{ hwCategories: newMap } });
   const setCatOrder = (newOrder) =>
@@ -5488,24 +5438,65 @@ function HomeworkView({ state, dispatch, showToast }) {
   if (!feedUrl) {
     return (
       <div>
-        <div style={{ background:"var(--bg1)", border:"1px solid var(--border)", borderRadius:16, padding:"24px 20px", marginBottom:20 }}>
-          <div style={{ fontSize:32, marginBottom:10 }}>📅</div>
-          <div style={{ fontSize:22, fontWeight:800, fontFamily:"var(--heading)", marginBottom:8 }}>Connect Canvas</div>
-          <div style={{ fontSize:17, color:"var(--text2)", lineHeight:1.7, marginBottom:18 }}>
-            Paste your Canvas iCal feed URL in Settings to auto-sync assignments every time you open the app.
+        <div style={{ background:"var(--bg2)", border:"1.5px solid var(--border)", borderRadius:18, padding:"28px 22px", marginTop:8 }}>
+          <div style={{ fontSize:38, marginBottom:12 }}>📅</div>
+          <div style={{ fontSize:24, fontWeight:800, fontFamily:"var(--heading)", marginBottom:8 }}>Connect Canvas</div>
+          <div style={{ fontSize:17, color:"var(--text2)", lineHeight:1.7, marginBottom:20 }}>
+            Paste your Canvas iCal feed URL below to auto-sync assignments every time you open the app.
           </div>
-          <div style={{ background:"var(--bg2)", borderRadius:12, padding:"14px 16px", marginBottom:18, border:"1px solid var(--border)" }}>
-            <div style={{ fontSize:13, fontWeight:800, color:"var(--text3)", fontFamily:"var(--mono)", letterSpacing:1, textTransform:"uppercase", marginBottom:10 }}>How to find it</div>
-            {["1. Open Canvas in a browser","2. Click Calendar in the left sidebar","3. Scroll to the bottom of the page","4. Click \"Calendar Feed\" to copy the URL","5. Paste it in Settings → Canvas Feed"].map((s,i) => (
-              <div key={i} style={{ fontSize:16, color:"var(--text2)", padding:"5px 0", borderBottom: i<4?"1px solid var(--border)":"none" }}>{s}</div>
-            ))}
-          </div>
-        </div>
-        <div className="empty">
-          <div style={{ fontSize:44, marginBottom:12 }}>◑</div>
-          <div className="empty-msg">No assignments yet</div>
-          <div className="empty-sub">Connect Canvas in Settings to auto-import.</div>
-          <div className="empty-tagline">Stay ahead, not behind.</div>
+          <input
+            className="field"
+            value={icalInput}
+            onChange={e => setIcalInput(e.target.value)}
+            placeholder="https://yourschool.instructure.com/feeds/calendars/user_…"
+            style={{ fontSize:14, fontFamily:"var(--mono)", marginBottom:12 }}
+          />
+          <button
+            className="btn btn-full btn-primary"
+            style={{ marginBottom:16, fontSize:17, fontWeight:800 }}
+            onClick={() => {
+              const url = icalInput.trim();
+              if (!url) return;
+              dispatch({ type:"UPD_CFG", cfg:{ icalFeedUrl: url } });
+              showToast("Canvas feed saved ✓");
+            }}>
+            Save & Sync
+          </button>
+          <button
+            onClick={() => setShowHow(o => !o)}
+            style={{ background:"none", border:"none", color:"var(--text3)", fontFamily:"var(--mono)", fontSize:13, fontWeight:700, cursor:"pointer", padding:0, letterSpacing:0.5 }}>
+            {showHow ? "▲ hide instructions" : "▼ how to find your iCal URL"}
+          </button>
+          {showHow && (
+            <div style={{ marginTop:10, display:"flex", flexDirection:"column", gap:8 }}>
+              <div>
+                <button onClick={() => setShowHowMobile(o => !o)}
+                  style={{ background:"var(--bg1)", border:"1px solid var(--border)", borderRadius:10, color:"var(--text2)", fontFamily:"var(--mono)", fontSize:13, fontWeight:700, cursor:"pointer", padding:"10px 14px", width:"100%", textAlign:"left", letterSpacing:0.5 }}>
+                  {showHowMobile ? "▲" : "▼"} 📱 Canvas Mobile App
+                </button>
+                {showHowMobile && (
+                  <div style={{ background:"var(--bg1)", borderRadius:"0 0 10px 10px", padding:"10px 16px 14px", border:"1px solid var(--border)", borderTop:"none" }}>
+                    {["1. Open the Canvas Student app","2. Tap the menu (☰) and go to Settings","3. Tap \"Subscribe to Calendar Feed\"","4. This opens Apple Calendar — tap \"Subscribe\"","5. Copy the URL from the calendar subscription screen","6. Paste it above and tap Save & Sync"].map((s,i,a) => (
+                      <div key={i} style={{ fontSize:15, color:"var(--text2)", padding:"6px 0", borderBottom: i<a.length-1?"1px solid var(--border)":"none" }}>{s}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <button onClick={() => setShowHowDesktop(o => !o)}
+                  style={{ background:"var(--bg1)", border:"1px solid var(--border)", borderRadius:10, color:"var(--text2)", fontFamily:"var(--mono)", fontSize:13, fontWeight:700, cursor:"pointer", padding:"10px 14px", width:"100%", textAlign:"left", letterSpacing:0.5 }}>
+                  {showHowDesktop ? "▲" : "▼"} 🖥️ Canvas Desktop (Browser)
+                </button>
+                {showHowDesktop && (
+                  <div style={{ background:"var(--bg1)", borderRadius:"0 0 10px 10px", padding:"10px 16px 14px", border:"1px solid var(--border)", borderTop:"none" }}>
+                    {["1. Open Canvas in a browser","2. Click Calendar in the left sidebar","3. Scroll to the bottom of the page","4. Click \"Calendar Feed\" to copy the URL","5. Paste it above and tap Save & Sync"].map((s,i,a) => (
+                      <div key={i} style={{ fontSize:15, color:"var(--text2)", padding:"6px 0", borderBottom: i<a.length-1?"1px solid var(--border)":"none" }}>{s}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -6996,6 +6987,9 @@ function App({ user }) {
     if (appState.cfg.theme === "claude2") {
       html.setAttribute("data-theme","claude2");
       if (meta) meta.setAttribute("content", "#f2ede8");
+    } else if (appState.cfg.theme === "nightfall") {
+      html.setAttribute("data-theme","nightfall");
+      if (meta) meta.setAttribute("content", "#003049");
     } else {
       html.removeAttribute("data-theme");
       if (meta) meta.setAttribute("content", "#0c0c0c");
@@ -7313,7 +7307,7 @@ function App({ user }) {
               transform: `translateY(${(1 - topbarCollapse) * -10}px)`
             }}
           >
-            <TimeRibbon compact hideLabel style={{ width:"100%" }} trackStyle={{ height:6 }} />
+            <TimeRibbon />
           </div>
 
         </div>
@@ -7380,6 +7374,28 @@ function AuthGate() {
   return <App user={null} />;
 }
 ReactDOM.createRoot(document.getElementById("root")).render(<AuthGate />);
+</script>
+<script>
+(function() {
+  function run() {
+    try {
+      var src = document.getElementById("app-source").textContent;
+      var output = Babel.transform(src, { presets: ["react"] }).code;
+      var script = document.createElement("script");
+      script.textContent = output;
+      document.body.appendChild(script);
+    } catch(e) {
+      document.getElementById("root").innerHTML =
+        "<div style='color:#ff5f57;font-family:monospace;padding:24px;white-space:pre-wrap'>" +
+        "<b>Babel Error:</b>\n" + (e.message || e) + "</div>";
+    }
+  }
+  if (typeof Babel !== "undefined") { run(); }
+  else {
+    var s = document.querySelector("script[src*='babel']");
+    s.addEventListener("load", run);
+  }
+})();
 </script>
 </body>
 </html>
